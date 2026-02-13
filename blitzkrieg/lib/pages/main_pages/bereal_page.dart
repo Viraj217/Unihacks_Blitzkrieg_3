@@ -2,8 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-import '../../services/cloudinary_service.dart';
-import '../../widgets/bereal/upload_preview_sheet.dart';
+import '../../../services/cloudinary_service.dart';
+import '../../../widgets/bereal/upload_preview_sheet.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class BeRealPage extends StatefulWidget {
