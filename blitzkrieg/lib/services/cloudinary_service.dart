@@ -12,17 +12,38 @@ class CloudinaryService {
       dotenv.env['CLOUDINARY_UPLOAD_FOLDER'] ?? 'blitzkrieg_bereal';
 
   /// Upload an image to Cloudinary using signed upload.
-  /// Returns a map with 'url', 'secure_url', 'public_id' on success.
-  /// Throws an exception on failure.
+  /// [subfolder] is appended to the base folder (e.g., 'back' or 'front').
   static Future<Map<String, dynamic>> uploadImage(
     File imageFile, {
-    String? customFolder,
+    String? subfolder,
+    String? publicId,
+    String? caption,
   }) async {
-    final uploadFolder = customFolder ?? folder;
+    final uploadFolder = subfolder != null ? '$folder/$subfolder' : folder;
     final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
 
     // Generate signature for signed upload
-    final paramsToSign = 'folder=$uploadFolder&timestamp=$timestamp$apiSecret';
+    // Parameters must be sorted alphabetically
+    final Map<String, String> params = {
+      'folder': uploadFolder,
+      'timestamp': timestamp.toString(),
+    };
+    if (publicId != null) {
+      params['public_id'] = publicId;
+    }
+    if (caption != null && caption.isNotEmpty) {
+      // Escape special characters for Cloudinary context
+      final sanitizedCaption = caption
+          .replaceAll('|', '\\|')
+          .replaceAll('=', '\\=');
+      params['context'] = 'caption=$sanitizedCaption';
+    }
+
+    // Sort and join
+    final sortedKeys = params.keys.toList()..sort();
+    final paramsToSign =
+        sortedKeys.map((key) => '$key=${params[key]}').join('&') + apiSecret;
+
     final signature = sha1.convert(utf8.encode(paramsToSign)).toString();
 
     final uri = Uri.parse(
@@ -33,8 +54,18 @@ class CloudinaryService {
       ..fields['api_key'] = apiKey
       ..fields['timestamp'] = timestamp.toString()
       ..fields['signature'] = signature
-      ..fields['folder'] = uploadFolder
-      ..files.add(await http.MultipartFile.fromPath('file', imageFile.path));
+      ..fields['folder'] = uploadFolder;
+
+    if (publicId != null) {
+      request.fields['public_id'] = publicId;
+    }
+    if (params.containsKey('context')) {
+      request.fields['context'] = params['context']!;
+    }
+
+    request.files.add(
+      await http.MultipartFile.fromPath('file', imageFile.path),
+    );
 
     final streamedResponse = await request.send();
     final response = await http.Response.fromStream(streamedResponse);
@@ -50,12 +81,47 @@ class CloudinaryService {
         'height': data['height'],
         'format': data['format'],
         'bytes': data['bytes'],
+        'context': data['context'],
       };
     } else {
       final error = json.decode(response.body);
       throw Exception(
-        'Cloudinary upload failed: ${error['error']?['message'] ?? response.body}',
+        'Upload failed: ${error['error']?['message'] ?? response.body}',
       );
+    }
+  }
+
+  /// List all images in the BeReal folder from Cloudinary.
+  /// Uses the Admin API with basic auth.
+  static Future<List<Map<String, dynamic>>> listImages({
+    int maxResults = 30,
+  }) async {
+    final uri = Uri.parse(
+      'https://api.cloudinary.com/v1_1/$cloudName/resources/search',
+    );
+
+    final basicAuth =
+        'Basic ${base64Encode(utf8.encode('$apiKey:$apiSecret'))}';
+
+    final response = await http.post(
+      uri,
+      headers: {'Authorization': basicAuth, 'Content-Type': 'application/json'},
+      body: json.encode({
+        'expression': 'folder:$folder/*',
+        'sort_by': [
+          {'created_at': 'desc'},
+        ],
+        'max_results': maxResults,
+        'with_field': ['context'],
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      final resources = data['resources'] as List<dynamic>? ?? [];
+      return resources.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Failed to fetch images: ${response.body}');
     }
   }
 
@@ -86,7 +152,7 @@ class CloudinaryService {
     return false;
   }
 
-  /// Get the URL for a Cloudinary image with optional transformations.
+  /// Build a Cloudinary URL with optional transformations.
   static String getImageUrl(
     String publicId, {
     int? width,

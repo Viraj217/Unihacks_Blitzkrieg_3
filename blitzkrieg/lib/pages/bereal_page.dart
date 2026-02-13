@@ -2,7 +2,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-import '../services/cloudinary_service.dart';
+import '../../services/cloudinary_service.dart';
+import '../../widgets/bereal/upload_preview_sheet.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class BeRealPage extends StatefulWidget {
   const BeRealPage({super.key});
@@ -13,58 +15,147 @@ class BeRealPage extends StatefulWidget {
 
 class _BeRealPageState extends State<BeRealPage> {
   final ImagePicker _picker = ImagePicker();
-  bool _isUploading = false;
-  String? _uploadedImageUrl;
-  String? _uploadTime;
+
+  // Feed state
+  bool _isLoadingFeed = true;
+  List<Map<String, dynamic>> _feedImages = [];
   String? _errorMessage;
 
-  Future<void> _captureAndUpload() async {
+  @override
+  void initState() {
+    super.initState();
+    _loadFeed();
+  }
+
+  // ─── LOAD FEED ────────────────────────────────────────────────
+  Future<void> _loadFeed() async {
+    setState(() => _isLoadingFeed = true);
     try {
-      // Open camera
-      final XFile? photo = await _picker.pickImage(
-        source: ImageSource.camera,
-        preferredCameraDevice: CameraDevice.front,
-        imageQuality: 85,
-        maxWidth: 1080,
-        maxHeight: 1920,
-      );
-
-      if (photo == null) return; // User cancelled
-
-      setState(() {
-        _isUploading = true;
-        _errorMessage = null;
-      });
-
-      // Upload to Cloudinary
-      final result = await CloudinaryService.uploadImage(File(photo.path));
-
-      setState(() {
-        _isUploading = false;
-        _uploadedImageUrl = result['secure_url'] as String?;
-        _uploadTime = DateFormat('hh:mm a').format(DateTime.now());
-      });
-
+      final images = await CloudinaryService.listImages(maxResults: 30);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('🎉 BeReal posted successfully!'),
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        );
+        setState(() {
+          _feedImages = images;
+          _isLoadingFeed = false;
+        });
       }
     } catch (e) {
-      setState(() {
-        _isUploading = false;
-        _errorMessage = e.toString().replaceFirst('Exception: ', '');
-      });
+      if (mounted) {
+        setState(() {
+          _isLoadingFeed = false;
+          _errorMessage = e.toString().replaceFirst('Exception: ', '');
+        });
+      }
     }
   }
 
+  // ─── CAMERA CAPTURE ───────────────────────────────────────────
+  Future<void> _capturePhoto() async {
+    try {
+      final photo = await _picker.pickImage(
+        source: ImageSource.camera,
+        preferredCameraDevice: CameraDevice.rear,
+        imageQuality: 85,
+        maxWidth: 1080,
+      );
+
+      if (photo != null && mounted) {
+        _showUploadPreview(File(photo.path));
+      }
+    } catch (e) {
+      _showErrorSnackBar('Failed to capture photo: $e');
+    }
+  }
+
+  // ─── SHOW PREVIEW SHEET ───────────────────────────────────────
+  void _showUploadPreview(File imageFile) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => BeRealUploadPreviewSheet(
+        imageFile: imageFile,
+        onRetake: _capturePhoto,
+        onUploadSuccess: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('🎉 BeReal posted successfully!'),
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          );
+          _loadFeed();
+        },
+      ),
+    );
+  }
+
+  void _showErrorSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
+  }
+
+  // ─── SCHEDULE DIALOG ──────────────────────────────────────────
+  void _scheduleBeReal() {
+    final colorScheme = Theme.of(context).colorScheme;
+    final now = DateTime.now();
+    DateTime scheduled = DateTime(now.year, now.month, now.day, 12, 0);
+
+    if (now.isAfter(scheduled)) {
+      scheduled = scheduled.add(const Duration(days: 1));
+    }
+
+    final formattedDate = DateFormat('EEEE, MMM d').format(scheduled);
+    final formattedTime = DateFormat('hh:mm a').format(scheduled);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text('Schedule BeReal'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Reminder set for:',
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '$formattedTime\n$formattedDate',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: colorScheme.primary,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('⏰ Scheduled for $formattedTime')),
+              );
+            },
+            child: const Text('Schedule'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── MAIN BUILD ───────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -73,319 +164,205 @@ class _BeRealPageState extends State<BeRealPage> {
       appBar: AppBar(
         title: const Text('BeReal'),
         actions: [
-          if (_uploadedImageUrl != null)
-            IconButton(
-              icon: Icon(Icons.refresh, color: Colors.grey[600]),
-              onPressed: () {
-                setState(() {
-                  _uploadedImageUrl = null;
-                  _uploadTime = null;
-                });
-              },
-            ),
+          IconButton(
+            onPressed: _loadFeed,
+            icon: Icon(Icons.refresh, color: Colors.grey[600]),
+          ),
         ],
       ),
-      body: _uploadedImageUrl != null
-          ? _buildPostedView(colorScheme)
-          : _buildCaptureView(colorScheme),
+      body: _buildBody(colorScheme),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showUploadOptions(colorScheme),
+        backgroundColor: colorScheme.primary,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.camera_alt_rounded),
+        label: const Text(
+          'BeReal',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
     );
   }
 
-  Widget _buildCaptureView(ColorScheme colorScheme) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 28),
+  Widget _buildBody(ColorScheme colorScheme) {
+    if (_isLoadingFeed) {
+      return Center(
+        child: CircularProgressIndicator(color: colorScheme.primary),
+      );
+    }
+
+    if (_errorMessage != null && _feedImages.isEmpty) {
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Camera icon
-            Container(
-              padding: const EdgeInsets.all(32),
-              decoration: BoxDecoration(
-                color: colorScheme.primaryContainer.withOpacity(0.3),
-                shape: BoxShape.circle,
-              ),
-              child: Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: colorScheme.primaryContainer.withOpacity(0.5),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.camera_alt_rounded,
-                  size: 48,
-                  color: colorScheme.primary,
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 28),
-
-            Text(
-              'Time to BeReal! ⚡',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-                color: colorScheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Capture your moment right now.\nNo filters, no retakes — just be real.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[500],
-                height: 1.5,
-              ),
-            ),
-
-            if (_errorMessage != null) ...[
-              const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.red[50],
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.red[200]!),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.error_outline, color: Colors.red[400], size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _errorMessage!,
-                        style: TextStyle(fontSize: 13, color: Colors.red[700]),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-
-            const SizedBox(height: 36),
-
-            // Capture button
-            if (_isUploading)
-              Column(
-                children: [
-                  SizedBox(
-                    width: 48,
-                    height: 48,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 3,
-                      color: colorScheme.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Uploading your BeReal...',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[500],
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              )
-            else
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: _captureAndUpload,
-                  icon: const Icon(Icons.camera_alt_rounded, size: 20),
-                  label: const Text('Take a BeReal'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: colorScheme.primary,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size(double.infinity, 52),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(28),
-                    ),
-                  ),
-                ),
-              ),
-
+            const Icon(Icons.error_outline, size: 48, color: Colors.red),
             const SizedBox(height: 16),
-
-            // Gallery option
-            if (!_isUploading)
-              TextButton.icon(
-                onPressed: () async {
-                  final XFile? photo = await _picker.pickImage(
-                    source: ImageSource.gallery,
-                    imageQuality: 85,
-                    maxWidth: 1080,
-                    maxHeight: 1920,
-                  );
-                  if (photo == null) return;
-
-                  setState(() {
-                    _isUploading = true;
-                    _errorMessage = null;
-                  });
-
-                  try {
-                    final result = await CloudinaryService.uploadImage(
-                      File(photo.path),
-                    );
-                    setState(() {
-                      _isUploading = false;
-                      _uploadedImageUrl = result['secure_url'] as String?;
-                      _uploadTime = DateFormat(
-                        'hh:mm a',
-                      ).format(DateTime.now());
-                    });
-                  } catch (e) {
-                    setState(() {
-                      _isUploading = false;
-                      _errorMessage = e.toString().replaceFirst(
-                        'Exception: ',
-                        '',
-                      );
-                    });
-                  }
-                },
-                icon: Icon(
-                  Icons.photo_library_outlined,
-                  color: colorScheme.primary,
-                  size: 20,
-                ),
-                label: Text(
-                  'Choose from gallery',
-                  style: TextStyle(
-                    color: colorScheme.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
+            Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+            TextButton(onPressed: _loadFeed, child: const Text('Retry')),
           ],
         ),
+      );
+    }
+
+    if (_feedImages.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.camera_alt_outlined, size: 64, color: Colors.grey[300]),
+            const SizedBox(height: 16),
+            Text(
+              'No BeReals yet',
+              style: TextStyle(fontSize: 20, color: Colors.grey[600]),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadFeed,
+      child: ListView.builder(
+        padding: const EdgeInsets.only(bottom: 100),
+        itemCount: _feedImages.length,
+        itemBuilder: (context, index) =>
+            _buildFeedCard(_feedImages[index], colorScheme),
       ),
     );
   }
 
-  Widget _buildPostedView(ColorScheme colorScheme) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          const SizedBox(height: 8),
+  Widget _buildFeedCard(Map<String, dynamic> image, ColorScheme colorScheme) {
+    final url = image['secure_url'] ?? '';
+    final createdAt = image['created_at'] ?? '';
 
-          // Header
+    // Extract caption from Cloudinary context
+    // Structure typically: context: { custom: { caption: "..." } }
+    String caption = '';
+    final context = image['context'];
+    if (context is Map) {
+      if (context['custom'] is Map && context['custom']['caption'] != null) {
+        caption = context['custom']['caption'].toString();
+      } else if (context['caption'] != null) {
+        // Fallback for flat structure
+        caption = context['caption'].toString();
+      }
+    }
+
+    // Simple time ago logic
+    String timeAgo = createdAt;
+    try {
+      final dt = DateTime.parse(createdAt);
+      final diff = DateTime.now().difference(dt);
+      if (diff.inMinutes < 60)
+        timeAgo = '${diff.inMinutes}m ago';
+      else if (diff.inHours < 24)
+        timeAgo = '${diff.inHours}h ago';
+      else
+        timeAgo = DateFormat('MMM d').format(dt);
+    } catch (_) {}
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(5)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Polaroid User Header (on the frame)
           Row(
             children: [
               CircleAvatar(
-                radius: 20,
-                backgroundColor: colorScheme.primaryContainer.withOpacity(0.4),
-                child: Icon(Icons.person, color: colorScheme.primary, size: 22),
+                radius: 14,
+                backgroundColor: colorScheme.primaryContainer,
+                child: Icon(Icons.person, size: 16, color: colorScheme.primary),
               ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Your BeReal',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 16,
-                      color: colorScheme.onSurface,
-                    ),
-                  ),
-                  Text(
-                    _uploadTime ?? 'Just now',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                  ),
-                ],
+              const SizedBox(width: 8),
+              Text(
+                'You',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: Colors.grey[800],
+                ),
               ),
               const Spacer(),
-              Icon(Icons.more_vert, color: Colors.grey[400]),
+              Text(
+                timeAgo,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[500],
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
             ],
           ),
+          const SizedBox(height: 12),
 
-          const SizedBox(height: 16),
-
-          // Image
-          ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: Image.network(
-              _uploadedImageUrl!,
-              width: double.infinity,
-              height: 420,
-              fit: BoxFit.cover,
-              loadingBuilder: (context, child, progress) {
-                if (progress == null) return child;
-                return Container(
-                  width: double.infinity,
-                  height: 420,
-                  decoration: BoxDecoration(
-                    color: colorScheme.primaryContainer.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.5,
-                      color: colorScheme.primary,
-                    ),
-                  ),
-                );
-              },
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  width: double.infinity,
-                  height: 420,
-                  decoration: BoxDecoration(
-                    color: Colors.red[50],
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          color: Colors.red[300],
-                          size: 40,
+          // Main Image
+          AspectRatio(
+            aspectRatio: 3 / 4,
+            child: Container(
+              color: Colors.grey[100],
+              child: Image.network(
+                url,
+                fit: BoxFit.cover,
+                loadingBuilder: (ctx, child, progress) => progress == null
+                    ? child
+                    : Center(
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: colorScheme.primary.withOpacity(0.5),
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Failed to load image',
-                          style: TextStyle(color: Colors.red[400]),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
+                      ),
+                errorBuilder: (ctx, _, __) => const Center(
+                  child: Icon(Icons.broken_image, color: Colors.grey),
+                ),
+              ),
             ),
           ),
 
           const SizedBox(height: 16),
 
-          // Reactions row
+          // Caption Area (Polaroid style)
+          if (caption.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Text(
+                caption,
+                style: GoogleFonts.grandstander(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                  height: 1.3,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            )
+          else
+            const SizedBox(height: 16),
+
+          // Reaction Row (Bottom of frame)
+          const SizedBox(height: 8),
           Row(
+            mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              _buildReactionChip('🔥', colorScheme),
-              const SizedBox(width: 8),
-              _buildReactionChip('❤️', colorScheme),
-              const SizedBox(width: 8),
-              _buildReactionChip('😂', colorScheme),
-              const Spacer(),
-              TextButton.icon(
-                onPressed: _captureAndUpload,
-                icon: Icon(
-                  Icons.camera_alt_outlined,
-                  size: 18,
-                  color: colorScheme.primary,
-                ),
-                label: Text(
-                  'Retake',
-                  style: TextStyle(
-                    color: colorScheme.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+              Icon(Icons.favorite_border, size: 20, color: Colors.grey[400]),
+              const SizedBox(width: 12),
+              Icon(
+                Icons.chat_bubble_outline,
+                size: 19,
+                color: Colors.grey[400],
               ),
             ],
           ),
@@ -394,17 +371,32 @@ class _BeRealPageState extends State<BeRealPage> {
     );
   }
 
-  Widget _buildReactionChip(String emoji, ColorScheme colorScheme) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: colorScheme.primaryContainer.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: colorScheme.primaryContainer.withOpacity(0.4),
+  void _showUploadOptions(ColorScheme colorScheme) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('Upload Now'),
+              onTap: () {
+                Navigator.pop(context);
+                _capturePhoto();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.alarm),
+              title: const Text('Schedule for 12:00 PM'),
+              onTap: () {
+                Navigator.pop(context);
+                _scheduleBeReal();
+              },
+            ),
+          ],
         ),
       ),
-      child: Text(emoji, style: const TextStyle(fontSize: 18)),
     );
   }
 }
