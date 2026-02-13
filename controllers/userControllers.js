@@ -2,17 +2,18 @@ import pool from '../database/pool.js';
 
 async function createProfile(req, res) {
     const user_data = req.body;
+    const metadata = req.user;
     const query = `
-      INSERT INTO profiles (email, username, display_name, password_hash , bio , phone_number , avatar_url)
+      INSERT INTO profiles (email, auth_id, username, display_name, bio , phone_number , avatar_url)
       VALUES ($1, $2, $3, $4 , $5, $6, $7)
       RETURNING id, email, username, display_name, avatar_url, created_at
     `;
 
     const values = [
-        user_data.email,
+        metadata.email,
+        metadata.id,
         user_data.username,
         user_data.display_name,
-        user_data.password_hash,
         user_data.bio || '',
         user_data.phone_number || '',
         user_data.avatar_url || ''

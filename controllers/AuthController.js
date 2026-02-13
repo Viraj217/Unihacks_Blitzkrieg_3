@@ -2,7 +2,6 @@ import supabase from "../config/supabase.js";
 
 async function UserSignup(req, res) {
     const cred = req.body;
-    console.log(cred);
 
     const { data, error } = await supabase.auth.signUp({
         email: cred.email,
@@ -10,7 +9,7 @@ async function UserSignup(req, res) {
     });
 
     if (error) return res.status(400).json({ error: error.message });
-    res.json(data);
+    res.status(201).json(data);
 };
 
 async function UserLogin(req, res) {
