@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
-import '../pages/landing_page.dart';
-import '../pages/phone_login_page.dart';
-import '../pages/otp_verification_page.dart';
-import '../pages/profile_setup_page.dart';
+import '../pages/onboarding_pages/landing_page.dart';
+import '../pages/splash_page/splash_screen.dart';
+import '../pages/onboarding_pages/phone_login_page.dart';
+import '../pages/onboarding_pages/otp_verification_page.dart';
+import '../pages/onboarding_pages/profile_setup_page.dart';
 import '../pages/home_page.dart';
 
 class AppRoutes {
   static const String landing = '/';
+  static const String splash = '/splash';
   static const String phoneLogin = '/phone-login';
   static const String otpVerification = '/otp-verification';
   static const String profileSetup = '/profile-setup';
@@ -16,6 +18,8 @@ class AppRoutes {
     switch (settings.name) {
       case landing:
         return _buildRoute(const LandingPage(), settings);
+      case splash:
+        return _buildRoute(const SplashScreen(), settings);
       case phoneLogin:
         return _buildRoute(const PhoneLoginPage(), settings);
       case otpVerification:

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../routes/app_routes.dart';
+import '../../routes/app_routes.dart';
 
 class LandingPage extends StatelessWidget {
   const LandingPage({super.key});
@@ -86,7 +86,7 @@ class LandingPage extends StatelessWidget {
               // Agree & Continue button
               FilledButton(
                 onPressed: () {
-                  Navigator.pushNamed(context, AppRoutes.phoneLogin);
+                  Navigator.pushNamed(context, AppRoutes.splash);
                 },
                 style: FilledButton.styleFrom(
                   backgroundColor: colorScheme.primary,
