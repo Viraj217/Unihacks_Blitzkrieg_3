@@ -3,6 +3,7 @@ import pool from '../database/pool.js';
 async function createProfile(req, res) {
     const user_data = req.body;
     const metadata = req.user;
+    console.log(metadata);
     const query = `
       INSERT INTO profiles (email, auth_id, username, display_name, bio , phone_number , avatar_url)
       VALUES ($1, $2, $3, $4 , $5, $6, $7)
