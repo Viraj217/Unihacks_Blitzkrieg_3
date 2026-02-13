@@ -169,7 +169,7 @@ class _BeRealUploadPreviewSheetState extends State<BeRealUploadPreviewSheet> {
                           textAlign: TextAlign.center,
                           style: GoogleFonts.grandstander(
                             fontSize: 18,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w400,
                             color: Colors.black87,
                           ),
                           decoration: InputDecoration(

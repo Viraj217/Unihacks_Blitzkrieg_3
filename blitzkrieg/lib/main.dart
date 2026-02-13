@@ -1,11 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'routes/app_routes.dart';
+import 'utils/app_colors.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: '.env');
+
+  // Initialize Supabase
+  await Supabase.initialize(
+    url: dotenv.env['SUPABASE_URL']!,
+    anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
+  );
+
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -25,7 +34,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        colorSchemeSeed: const Color(0xFF7C3AED),
+        colorSchemeSeed: AppTheme.primaryPurple,
         brightness: Brightness.dark,
         scaffoldBackgroundColor: Colors.transparent,
         appBarTheme: const AppBarTheme(
@@ -42,7 +51,7 @@ class MyApp extends StatelessWidget {
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF7C3AED),
+            backgroundColor: AppTheme.primaryPurple,
             foregroundColor: Colors.white,
             minimumSize: const Size(double.infinity, 52),
             shape: RoundedRectangleBorder(
@@ -63,7 +72,10 @@ class MyApp extends StatelessWidget {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(28),
             ),
-            side: const BorderSide(color: Color(0xFFD6BCFA), width: 1.5),
+            side: const BorderSide(
+              color: AppTheme.lightPurpleBorder,
+              width: 1.5,
+            ),
             textStyle: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -87,7 +99,10 @@ class MyApp extends StatelessWidget {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: Color(0xFF7C3AED), width: 2),
+            borderSide: const BorderSide(
+              color: AppTheme.primaryPurple,
+              width: 2,
+            ),
           ),
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 20,
@@ -115,16 +130,7 @@ class MyApp extends StatelessWidget {
       initialRoute: AppRoutes.landing,
       onGenerateRoute: AppRoutes.generateRoute,
       builder: (context, child) {
-        return Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Color(0xFF2B0A3D), Color(0xFF5F259F)],
-            ),
-          ),
-          child: child,
-        );
+        return Container(decoration: AppTheme.backgroundGradient, child: child);
       },
     );
   }

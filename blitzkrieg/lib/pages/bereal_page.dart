@@ -342,7 +342,7 @@ class _BeRealPageState extends State<BeRealPage> {
                 caption,
                 style: GoogleFonts.grandstander(
                   fontSize: 18,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w400,
                   color: Colors.black87,
                   height: 1.3,
                 ),
