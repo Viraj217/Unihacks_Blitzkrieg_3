@@ -50,3 +50,19 @@ CREATE TABLE IF NOT EXISTS group_join_requests (
     UNIQUE(group_id, requester_id, status)
 );
 
+CREATE OR REPLACE FUNCTION generate_invite_code()
+RETURNS TEXT AS $$
+DECLARE
+    new_code TEXT;
+BEGIN
+    LOOP
+        new_code := substr(md5(random()::text), 1, 6);
+
+        EXIT WHEN NOT EXISTS (
+            SELECT 1 FROM groups WHERE invite_code = new_code
+        );
+    END LOOP;
+
+    RETURN upper(new_code);
+END;
+$$ LANGUAGE plpgsql;
