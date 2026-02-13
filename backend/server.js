@@ -1,7 +1,11 @@
 import express from "express";
 import dotenv from "dotenv";
 import router from "./routes/user.js";
+import Crouter from "./routes/chat.js";
 import Arouter from "./routes/Auth.js";
+import { createServer } from 'http';
+import cors from 'cors';
+import { initializeSocket } from './utils/socketserver.js';
 
 dotenv.config();
 
@@ -24,9 +28,12 @@ app.use(express.json())
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-app.listen(PORT, () => {
-    console.log(`the server is listenning on port ${PORT}`);
+
+
+httpServer.listen(PORT, () => {
+    console.log(`the server is listening on port ${PORT}`);
 });
 
 app.use("/", router);
-app.use("/", Arouter); 
+app.use("/", Arouter);
+app.use("/", Crouter);
