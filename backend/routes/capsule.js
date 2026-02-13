@@ -11,28 +11,28 @@ import {
     removeReaction,
     unlockCapsule
 } from '../controllers/capsuleController.js';
-import { verifyToken } from '../middleware/verify.js';
+import { verifyUser } from '../middleware/verify.js';
 
-const Crouter = express.Router();
+const Caprouter = express.Router();
 
 // All routes require authentication
-Crouter.use(verifyToken);
+Caprouter.use(verifyUser);
 
 // Capsule CRUD
-Crouter.post('/', createCapsule);
-Crouter.get('/:id', getCapsuleById);
-Crouter.put('/:id', updateCapsule);
-Crouter.delete('/:id', deleteCapsule);
+Caprouter.post('/', createCapsule);
+Caprouter.get('/:id', getCapsuleById);
+Caprouter.put('/:id', updateCapsule);
+Caprouter.delete('/:id', deleteCapsule);
 
 // Capsule actions
-Crouter.post('/:id/unlock', unlockCapsule);
+Caprouter.post('/:id/unlock', unlockCapsule);
 
 // Capsule contents
-Crouter.post('/:id/contents', addContent);
-Crouter.delete('/:id/contents/:contentId', deleteContent);
+Caprouter.post('/:id/contents', addContent);
+Caprouter.delete('/:id/contents/:contentId', deleteContent);
 
 // Capsule reactions
-Crouter.post('/:id/reactions', addReaction);
-Crouter.delete('/:id/reactions', removeReaction);
+Caprouter.post('/:id/reactions', addReaction);
+Caprouter.delete('/:id/reactions', removeReaction);
 
-export default Crouter;
+export default Caprouter;
