@@ -6,7 +6,7 @@ class AuthService {
   // Get the base URL from environment or use default
   static String get _baseUrl {
     final port = dotenv.env['PORT'] ?? '3000';
-    return 'http://localhost:$port';
+    return 'http://192.168.29.37:$port';
   }
 
   /// Sign up a new user

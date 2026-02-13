@@ -32,14 +32,10 @@ class _HomePageState extends State<HomePage> {
       body: _pages[_selectedIndex],
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: colorScheme.surface,
-          boxShadow: [
-            BoxShadow(
-              blurRadius: 20,
-              color: colorScheme.primary.withOpacity(0.06),
-              offset: const Offset(0, -4),
-            ),
-          ],
+          color: Colors.white.withOpacity(0.08),
+          border: Border(
+            top: BorderSide(color: Colors.white.withOpacity(0.1), width: 1),
+          ),
         ),
         child: SafeArea(
           child: Padding(
@@ -48,12 +44,12 @@ class _HomePageState extends State<HomePage> {
               rippleColor: colorScheme.primaryContainer.withOpacity(0.4),
               hoverColor: colorScheme.primaryContainer.withOpacity(0.2),
               gap: 8,
-              activeColor: colorScheme.primary,
+              activeColor: Colors.white,
               iconSize: 24,
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
               duration: const Duration(milliseconds: 400),
-              tabBackgroundColor: colorScheme.primaryContainer.withOpacity(0.3),
-              color: Colors.grey[400],
+              tabBackgroundColor: colorScheme.primary.withOpacity(0.4),
+              color: Colors.white.withOpacity(0.6),
               tabs: const [
                 GButton(icon: LineIcons.comment, text: 'Chat'),
                 GButton(icon: LineIcons.stream, text: 'Timeline'),

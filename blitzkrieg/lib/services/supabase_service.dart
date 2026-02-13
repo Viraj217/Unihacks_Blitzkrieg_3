@@ -72,4 +72,43 @@ class SupabaseService {
   ) async {
     await supabase.from(tableName).delete().eq(column, value);
   }
+
+  // Get current user's profile
+  static Future<Map<String, dynamic>?> getUserProfile() async {
+    final user = currentUser;
+    if (user == null) return null;
+
+    try {
+      final data = await supabase
+          .from('profiles')
+          .select()
+          .eq('auth_id', user.id)
+          .single();
+
+      // Create a specific profile map and inject the email from auth if needed
+      final profile = Map<String, dynamic>.from(data);
+
+      // Ensure email is available (use from profile or fallback to auth email)
+      if (profile['email'] == null) {
+        profile['email'] = user.email;
+      }
+
+      // Ensure display name is available
+      if (profile['display_name'] == null) {
+        profile['display_name'] = user.email?.split('@').first ?? 'User';
+      }
+
+      return profile;
+    } catch (e) {
+      // If profile doesn't exist, return basic user info
+      return {
+        'auth_id': user.id,
+        'email': user.email,
+        'display_name': user.email?.split('@').first ?? 'User',
+        'username': user.email?.split('@').first ?? 'user',
+        'avatar_url': null,
+        'bio': 'Hey there! I am using Blitzkrieg',
+      };
+    }
+  }
 }

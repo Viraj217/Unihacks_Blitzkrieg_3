@@ -1,7 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../routes/app_routes.dart';
-import '../../services/auth_service.dart';
+import '../../services/supabase_service.dart';
 import '../../utils/app_colors.dart';
 
 class SignupPage extends StatefulWidget {
@@ -73,32 +73,38 @@ class _SignupPageState extends State<SignupPage>
 
     setState(() => _isLoading = true);
 
-    final response = await AuthService.signUp(
-      email: _emailController.text.trim(),
-      password: _passwordController.text,
-    );
-
-    if (!mounted) return;
-
-    setState(() => _isLoading = false);
-
-    if (response.success) {
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(response.message),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-        ),
+    try {
+      final response = await SupabaseService.signUpWithEmail(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
       );
 
-      // Navigate to profile setup or home
-      Navigator.pushReplacementNamed(context, AppRoutes.profileSetup);
-    } else {
+      if (!mounted) return;
+
+      setState(() => _isLoading = false);
+
+      if (response.user != null) {
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Signup successful'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+
+        // Navigate to profile setup or home
+        Navigator.pushReplacementNamed(context, AppRoutes.profileSetup);
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() => _isLoading = false);
+
       // Show error message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(response.message),
+          content: Text('Signup failed: ${e.toString()}'),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
         ),

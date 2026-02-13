@@ -5,7 +5,12 @@ class ChatScreen extends StatefulWidget {
   final String avatar;
   final List<String>? initialMessages;
 
-  const ChatScreen({Key? key, required this.name, required this.avatar, this.initialMessages}) : super(key: key);
+  const ChatScreen({
+    Key? key,
+    required this.name,
+    required this.avatar,
+    this.initialMessages,
+  }) : super(key: key);
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -64,10 +69,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF5B2C6F),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF5B2C6F),
-        elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
@@ -77,14 +79,17 @@ class _ChatScreenState extends State<ChatScreen> {
             Container(
               width: 36,
               height: 36,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white24,
+                color: Colors.white.withOpacity(0.2),
               ),
               alignment: Alignment.center,
               child: Text(
                 widget.avatar,
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
             const SizedBox(width: 10),
@@ -100,7 +105,10 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.calendar_today_outlined, color: Colors.white),
+            icon: const Icon(
+              Icons.calendar_today_outlined,
+              color: Colors.white,
+            ),
             onPressed: () {},
           ),
           IconButton(
@@ -113,9 +121,9 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           Expanded(
             child: Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFFE8D7E8),
-                borderRadius: BorderRadius.only(
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(30),
                   topRight: Radius.circular(30),
                 ),
@@ -136,7 +144,12 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            color: const Color(0xFF7E5B8F),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.08),
+              border: Border(
+                top: BorderSide(color: Colors.white.withOpacity(0.1), width: 1),
+              ),
+            ),
             child: Row(
               children: [
                 Expanded(
@@ -145,10 +158,15 @@ class _ChatScreenState extends State<ChatScreen> {
                     onSubmitted: (_) => _sendMessage(),
                     decoration: InputDecoration(
                       hintText: 'Type a message',
-                      hintStyle: const TextStyle(color: Colors.white70),
+                      hintStyle: TextStyle(
+                        color: Colors.white.withOpacity(0.5),
+                      ),
                       filled: true,
-                      fillColor: Colors.white24,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      fillColor: Colors.white.withOpacity(0.1),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(24),
                         borderSide: BorderSide.none,
@@ -159,9 +177,9 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.white24,
+                    color: const Color(0xFF7C3AED),
                   ),
                   child: IconButton(
                     icon: const Icon(Icons.send, color: Colors.white),
@@ -183,18 +201,24 @@ class _ChatScreenState extends State<ChatScreen> {
         constraints: const BoxConstraints(maxWidth: 280),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: isMe ? const Color(0xFF7E5B8F) : const Color(0xFFB8ACE8),
+          color: isMe
+              ? const Color(0xFF7C3AED)
+              : Colors.white.withOpacity(0.15),
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(25),
             topRight: const Radius.circular(25),
-            bottomLeft: isMe ? const Radius.circular(25) : const Radius.circular(5),
-            bottomRight: isMe ? const Radius.circular(5) : const Radius.circular(25),
+            bottomLeft: isMe
+                ? const Radius.circular(25)
+                : const Radius.circular(5),
+            bottomRight: isMe
+                ? const Radius.circular(5)
+                : const Radius.circular(25),
           ),
         ),
         child: Text(
           message,
           style: TextStyle(
-            color: isMe ? Colors.white : Colors.black87,
+            color: isMe ? Colors.white : Colors.white,
             fontSize: 15,
           ),
         ),
@@ -203,10 +227,10 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   List<String> _sampleMessages() => [
-        'Hey! How are you doing?',
-        'I am good, thanks! Just working on the project — it\'s coming along pretty well. I had to refactor the chat screen to accommodate variable message heights and wrapping, so now messages of any length should layout nicely.',
-        'Nice — that sounds great!',
-        'Yep. Also planning to wire this up to the backend soon.',
-        'Awesome, keep me posted.',
-      ];
+    'Hey! How are you doing?',
+    'I am good, thanks! Just working on the project — it\'s coming along pretty well. I had to refactor the chat screen to accommodate variable message heights and wrapping, so now messages of any length should layout nicely.',
+    'Nice — that sounds great!',
+    'Yep. Also planning to wire this up to the backend soon.',
+    'Awesome, keep me posted.',
+  ];
 }

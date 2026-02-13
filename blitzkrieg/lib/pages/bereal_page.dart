@@ -162,6 +162,7 @@ class _BeRealPageState extends State<BeRealPage> {
 
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: const Text('BeReal'),
         actions: [
           IconButton(

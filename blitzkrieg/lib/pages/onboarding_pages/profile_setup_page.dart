@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../routes/app_routes.dart';
+import '../../services/supabase_service.dart';
 
 class ProfileSetupPage extends StatefulWidget {
   const ProfileSetupPage({super.key});
@@ -10,7 +11,9 @@ class ProfileSetupPage extends StatefulWidget {
 
 class _ProfileSetupPageState extends State<ProfileSetupPage> {
   final _nameController = TextEditingController();
+  final _bioController = TextEditingController();
   int _selectedAvatarIndex = -1;
+  bool _isSaving = false;
 
   final List<_AvatarOption> _avatars = [
     _AvatarOption(
@@ -54,7 +57,68 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   @override
   void dispose() {
     _nameController.dispose();
+    _bioController.dispose();
     super.dispose();
+  }
+
+  Future<void> _saveProfile() async {
+    final name = _nameController.text.trim();
+
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter your name'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
+
+    try {
+      final user = SupabaseService.currentUser;
+      if (user == null) {
+        throw Exception('No user logged in');
+      }
+
+      // Save profile to Supabase
+      final email = user.email ?? '';
+      final username = email.split('@').first;
+
+      // Check if username exists and append random number if needed
+      // For now, let's just use the email prefix as username
+
+      await supabase.from('profiles').upsert({
+        'auth_id': user.id,
+        'username': username,
+        'email': email,
+        'display_name': name,
+        'bio': _bioController.text.trim().isNotEmpty
+            ? _bioController.text.trim()
+            : 'Hey there! I am using Blitzkrieg',
+        'avatar_url': null,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+
+      if (mounted) {
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          AppRoutes.home,
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error saving profile: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -216,6 +280,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
 
             // About / Status input
             TextField(
+              controller: _bioController,
               textCapitalization: TextCapitalization.sentences,
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
               decoration: InputDecoration(
@@ -240,13 +305,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
           child: FilledButton(
-            onPressed: () {
-              Navigator.pushNamedAndRemoveUntil(
-                context,
-                AppRoutes.home,
-                (route) => false,
-              );
-            },
+            onPressed: _isSaving ? null : _saveProfile,
             style: FilledButton.styleFrom(
               backgroundColor: colorScheme.primary,
               foregroundColor: Colors.white,
@@ -255,7 +314,16 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                 borderRadius: BorderRadius.circular(28),
               ),
             ),
-            child: const Text('Next'),
+            child: _isSaving
+                ? const SizedBox(
+                    height: 24,
+                    width: 24,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 3,
+                    ),
+                  )
+                : const Text('Next'),
           ),
         ),
       ),

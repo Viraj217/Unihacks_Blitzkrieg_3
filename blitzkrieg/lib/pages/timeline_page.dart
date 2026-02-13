@@ -9,6 +9,7 @@ class TimelinePage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: const Text('Timeline'),
         actions: [
           IconButton(
