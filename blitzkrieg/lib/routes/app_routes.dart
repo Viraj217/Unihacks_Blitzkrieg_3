@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
-import '../pages/onboarding_pages/landing_page.dart';
+
 import '../pages/splash_page/splash_screen.dart';
 import '../pages/onboarding_pages/phone_login_page.dart';
 import '../pages/onboarding_pages/otp_verification_page.dart';
 import '../pages/onboarding_pages/profile_setup_page.dart';
+import '../pages/onboarding_pages/login_page.dart';
+import '../pages/onboarding_pages/signup_page.dart';
 import '../pages/home_page.dart';
+import '../pages/onboarding_pages/beme_landing_animation_page.dart';
 
 class AppRoutes {
   static const String landing = '/';
   static const String splash = '/splash';
+  static const String login = '/login';
+  static const String signup = '/signup';
   static const String phoneLogin = '/phone-login';
   static const String otpVerification = '/otp-verification';
   static const String profileSetup = '/profile-setup';
@@ -17,9 +22,13 @@ class AppRoutes {
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
       case landing:
-        return _buildRoute(const LandingPage(), settings);
+        return _buildRoute(const BemeLandingAnimationPage(), settings);
       case splash:
         return _buildRoute(const SplashScreen(), settings);
+      case login:
+        return _buildRoute(const LoginPage(), settings);
+      case signup:
+        return _buildRoute(const SignupPage(), settings);
       case phoneLogin:
         return _buildRoute(const PhoneLoginPage(), settings);
       case otpVerification:
@@ -33,7 +42,7 @@ class AppRoutes {
       case home:
         return _buildRoute(const HomePage(), settings);
       default:
-        return _buildRoute(const LandingPage(), settings);
+        return _buildRoute(const BemeLandingAnimationPage(), settings);
     }
   }
 
