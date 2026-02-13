@@ -1,5 +1,4 @@
 import { Server } from 'socket.io';
-import jwt from 'jsonwebtoken';
 import pool from '../database/pool.js';
 
 let io;
@@ -24,18 +23,13 @@ function initializeSocket(httpServer) {
                 return next(new Error('Authentication error: No token provided'));
             }
 
-            // Verify JWT token
-            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            const { data, error } = await supabase.auth.getUser(token);
 
-            // Get user from database
-            const userQuery = 'SELECT id, username, display_name, avatar_url FROM profiles WHERE id = $1';
-            const result = await pool.query(userQuery, [decoded.userId]);
-
-            if (result.rows.length === 0) {
-                return next(new Error('Authentication error: User not found'));
+            if (error || !data.user) {
+                return next(new Error("Invalid token"));
             }
 
-            socket.user = result.rows[0];
+            socket.user = data.user; // Attach user to socket
             next();
         } catch (error) {
             next(new Error('Authentication error: Invalid token'));

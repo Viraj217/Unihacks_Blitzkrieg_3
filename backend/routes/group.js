@@ -4,6 +4,10 @@ const Grouter = express.Router()
 
 import { createGroup, getGroupById, updateGroup, deleteGroup, joinGroup, leaveGroup, getGroupMembers, removeMember, createJoinRequest, getJoinRequests, respondToJoinRequest } from "../controllers/groupController.js";
 import { verifyUser } from "../middleware/verify.js";
+import { getGroupCapsules } from '../controllers/capsuleController.js';
+
+// Add this route
+Grouter.get('/:groupId/capsules', getGroupCapsules);
 
 Grouter.post("/group/create", verifyUser, createGroup);
 Grouter.get("/group/:id", verifyUser, getGroupById);
