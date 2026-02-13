@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS group_join_requests (
     UNIQUE(group_id, requester_id, status)
 );
 
+<<<<<<< HEAD
 CREATE OR REPLACE FUNCTION generate_invite_code()
 RETURNS TEXT AS $$
 DECLARE
@@ -111,3 +112,5 @@ CREATE TRIGGER update_chat_messages_updated_at
     BEFORE UPDATE ON chat_messages
     FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column();
+=======
+>>>>>>> 080ac55b08100ee1aa4975024fa1e3bda9676dfb
