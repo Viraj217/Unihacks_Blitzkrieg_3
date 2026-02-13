@@ -1,0 +1,29 @@
+{
+  "name": "unihacks_blitzkrieg_3",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Viraj217/Unihacks_Blitzkrieg_3.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Viraj217/Unihacks_Blitzkrieg_3/issues"
+  },
+  "homepage": "https://github.com/Viraj217/Unihacks_Blitzkrieg_3#readme",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.95.3",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "firebase": "^12.9.0",
+    "fs": "^0.0.1-security",
+    "pg": "^8.18.0"
+  }
+}
