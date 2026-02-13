@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'individual_chat.dart';
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
@@ -263,7 +264,17 @@ class _ChatPageState extends State<ChatPage> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () {},
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ChatScreen(
+                name: conversation.name,
+                avatar: conversation.avatar,
+              ),
+            ),
+          );
+        },
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Row(
