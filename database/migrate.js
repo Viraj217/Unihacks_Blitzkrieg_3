@@ -7,7 +7,7 @@ dotenv.config();
 const { Client } = pkg;
 
 const client = new Client({
-    connectionString: process.env.postgres_url,
+    connectionString: process.env.DIRECT_URL,
     ssl: {
         rejectUnauthorized: false,
     },
