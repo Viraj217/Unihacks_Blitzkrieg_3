@@ -1,0 +1,74 @@
+import 'package:flutter/material.dart';
+
+import '../pages/splash_page/splash_screen.dart';
+import '../pages/onboarding_pages/phone_login_page.dart';
+import '../pages/onboarding_pages/otp_verification_page.dart';
+import '../pages/onboarding_pages/profile_setup_page.dart';
+import '../pages/onboarding_pages/login_page.dart';
+import '../pages/onboarding_pages/signup_page.dart';
+import '../pages/home_page.dart';
+import '../pages/onboarding_pages/beme_landing_animation_page.dart';
+
+class AppRoutes {
+  static const String landing = '/';
+  static const String splash = '/splash';
+  static const String login = '/login';
+  static const String signup = '/signup';
+  static const String phoneLogin = '/phone-login';
+  static const String otpVerification = '/otp-verification';
+  static const String profileSetup = '/profile-setup';
+  static const String home = '/home';
+
+  static Route<dynamic> generateRoute(RouteSettings settings) {
+    switch (settings.name) {
+      case landing:
+        return _buildRoute(const BemeLandingAnimationPage(), settings);
+      case splash:
+        return _buildRoute(const SplashScreen(), settings);
+      case login:
+        return _buildRoute(const LoginPage(), settings);
+      case signup:
+        return _buildRoute(const SignupPage(), settings);
+      case phoneLogin:
+        return _buildRoute(const PhoneLoginPage(), settings);
+      case otpVerification:
+        final phoneNumber = settings.arguments as String? ?? '';
+        return _buildRoute(
+          OtpVerificationPage(phoneNumber: phoneNumber),
+          settings,
+        );
+      case profileSetup:
+        return _buildRoute(const ProfileSetupPage(), settings);
+      case home:
+        return _buildRoute(const HomePage(), settings);
+      default:
+        return _buildRoute(const BemeLandingAnimationPage(), settings);
+    }
+  }
+
+  static PageRouteBuilder _buildRoute(Widget page, RouteSettings settings) {
+    return PageRouteBuilder(
+      settings: settings,
+      pageBuilder: (context, animation, secondaryAnimation) => page,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        return FadeTransition(
+          opacity: CurvedAnimation(parent: animation, curve: Curves.easeInOut),
+          child: SlideTransition(
+            position:
+                Tween<Offset>(
+                  begin: const Offset(0.05, 0),
+                  end: Offset.zero,
+                ).animate(
+                  CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                  ),
+                ),
+            child: child,
+          ),
+        );
+      },
+      transitionDuration: const Duration(milliseconds: 300),
+    );
+  }
+}
