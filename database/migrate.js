@@ -9,7 +9,7 @@ const { Client } = pkg;
 const client = new Client({
     connectionString: process.env.postgres_url,
     ssl: {
-        rejectUnauthorized: false, // required for Render
+        rejectUnauthorized: false,
     },
 });
 

@@ -9,17 +9,17 @@ const pool = new Pool({
     ssl: {
         rejectUnauthorized: false,
     },
-    max: 20, // Maximum connections in pool
+    max: 20,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 2000,
 });
 
 pool.on('connect', () => {
-    console.log('✅ Database connected');
+    console.log('Database connected');
 });
 
 pool.on('error', (err) => {
-    console.error('❌ Database error:', err);
+    console.error('Database error:', err);
 });
 
 export default pool;
