@@ -233,7 +233,6 @@ async function deleteGroup(req, res) {
     }
 }
 
-<<<<<<< HEAD
 async function joinGroup(req, res) {
     const { invite_code } = req.body;
     const user_id = req.user.id;
@@ -607,6 +606,3 @@ async function respondToJoinRequest(req, res) {
 
 
 export { createGroup, getGroupById, updateGroup, deleteGroup, joinGroup, leaveGroup, getGroupMembers, removeMember, createJoinRequest, getJoinRequests, respondToJoinRequest };
-=======
-export { createGroup, getGroupById, updateGroup, deleteGroup };
->>>>>>> 080ac55b08100ee1aa4975024fa1e3bda9676dfb

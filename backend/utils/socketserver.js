@@ -1,5 +1,14 @@
 import { Server } from 'socket.io';
 import pool from '../database/pool.js';
+import supabase from '../config/supabase.js';
+import {
+    ensureBotProfile,
+    handleMention,
+    checkForRoast,
+    saveBotMessage,
+    buildBotPayload,
+    GEMINI_BOT_ID,
+} from './gemini.js';
 
 let io;
 
@@ -37,6 +46,9 @@ function initializeSocket(httpServer) {
     });
 
     // Connection handler
+    // Ensure Gemini bot profile exists on startup
+    ensureBotProfile();
+
     io.on('connection', (socket) => {
         console.log(`✅ User connected: ${socket.user.username} (${socket.id})`);
 
@@ -203,6 +215,13 @@ async function handleSendMessage(socket, data) {
         });
 
         console.log(`💬 ${socket.user.username} sent message to group ${groupId}`);
+
+        // ── Gemini AI Integration ──────────────────────────────
+        // Don't process bot's own messages
+        if (socket.user.id !== GEMINI_BOT_ID) {
+            processGeminiResponse(groupId, socket.user.username, content);
+        }
+
     } catch (error) {
         console.error('Error sending message:', error);
         socket.emit('error', { message: 'Failed to send message' });
@@ -349,6 +368,53 @@ function getIO() {
         throw new Error('Socket.io not initialized');
     }
     return io;
+}
+
+/**
+ * Process a message for Gemini AI responses (runs async, non-blocking)
+ * Handles both @gemini mentions and passive roasting
+ */
+async function processGeminiResponse(groupId, senderUsername, content) {
+    try {
+        const isMention = /@gemini/i.test(content);
+
+        if (isMention) {
+            // ── @gemini mention: always respond ──
+            console.log(`🤖 Gemini mentioned by ${senderUsername} in group ${groupId}`);
+
+            // Small delay so the bot feels natural, not instant
+            await new Promise(r => setTimeout(r, 1000 + Math.random() * 1500));
+
+            const reply = await handleMention(groupId, senderUsername, content);
+            if (!reply) return;
+
+            const botMsg = await saveBotMessage(groupId, reply);
+            if (!botMsg) return;
+
+            const payload = buildBotPayload(botMsg);
+            io.to(`group:${groupId}`).emit('message:new', payload);
+
+            console.log(`🤖 Gemini replied in group ${groupId}`);
+        } else {
+            // ── Passive roast check (runs with random chance gate inside) ──
+            const roast = await checkForRoast(groupId, senderUsername, content);
+            if (!roast) return;
+
+            // Longer delay for roasts to feel organic
+            await new Promise(r => setTimeout(r, 2000 + Math.random() * 3000));
+
+            const botMsg = await saveBotMessage(groupId, roast);
+            if (!botMsg) return;
+
+            const payload = buildBotPayload(botMsg);
+            io.to(`group:${groupId}`).emit('message:new', payload);
+
+            console.log(`🔥 Gemini roasted ${senderUsername} in group ${groupId}`);
+        }
+    } catch (error) {
+        console.error('Gemini processing error:', error.message);
+        // Silently fail — never break the chat for AI features
+    }
 }
 
 export { initializeSocket, getIO };

@@ -6,7 +6,7 @@ import '../pages/onboarding_pages/otp_verification_page.dart';
 import '../pages/onboarding_pages/profile_setup_page.dart';
 import '../pages/onboarding_pages/login_page.dart';
 import '../pages/onboarding_pages/signup_page.dart';
-import '../pages/home_page.dart';
+import '../pages/main_pages/home_page.dart';
 import '../pages/onboarding_pages/beme_landing_animation_page.dart';
 
 class AppRoutes {
