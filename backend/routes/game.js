@@ -1,13 +1,25 @@
-// backend/routes/game.js
 import express from 'express';
-import { getTruthOrDare, getSikeQuestion } from '../controllers/GameController.js';
+import {
+    getTruthOrDare,
+    startPoll,
+    castVote,
+    getPollResults
+} from '../controllers/GameController.js';
 
 const router = express.Router();
 
-// POST request so you can send { "type": "truth" } in the body
+// Truth or Dare Endpoint
+// POST /api/games/tod -> Body: { "type": "truth" }
 router.post('/tod', getTruthOrDare);
 
-// GET request is fine since no input is needed
-router.get('/sike', getSikeQuestion);
+// Most Likely To Endpoints
+// POST /api/games/poll/start -> Starts new round
+router.post('/poll/start', startPoll);
+
+// POST /api/games/poll/vote -> Body: { "voter": "Alice", "candidate": "Bob" }
+router.post('/poll/vote', castVote);
+
+// GET /api/games/poll/result -> Ends round and shows winner
+router.get('/poll/result', getPollResults);
 
 export default router;
