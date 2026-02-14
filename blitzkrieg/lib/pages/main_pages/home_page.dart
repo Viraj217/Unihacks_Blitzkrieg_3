@@ -19,7 +19,6 @@ class _HomePageState extends State<HomePage> {
 
   static const List<Widget> _pages = [
     ChatPage(),
-    TimelinePage(),
     BeRealPage(),
     ProfilePage(),
   ];
@@ -52,7 +51,6 @@ class _HomePageState extends State<HomePage> {
               color: Colors.white.withOpacity(0.6),
               tabs: const [
                 GButton(icon: LineIcons.comment, text: 'Chat'),
-                GButton(icon: LineIcons.stream, text: 'Timeline'),
                 GButton(icon: LineIcons.camera, text: 'BeReal'),
                 GButton(icon: LineIcons.user, text: 'Profile'),
               ],

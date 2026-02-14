@@ -9,6 +9,7 @@ import cors from 'cors';
 import { initializeSocket } from './utils/socketserver.js';
 import { startCapsuleUnlockJob } from './utils/capsuleUnlock.js';
 import Trouter from "./routes/timeline.js";
+import Vrouter from "./routes/vault.js";
 dotenv.config();
 
 
@@ -34,7 +35,8 @@ app.use("/", router);
 app.use("/", Arouter);
 app.use("/", Crouter);
 app.use("/", Caprouter);
-app.use("/", Trouter)
+app.use("/", Trouter);
+app.use("/vault", Vrouter);
 
 startCapsuleUnlockJob();
 

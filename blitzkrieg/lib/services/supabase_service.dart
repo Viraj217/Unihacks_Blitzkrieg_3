@@ -11,6 +11,9 @@ class SupabaseService {
   // Check if user is signed in
   static bool get isSignedIn => currentUser != null;
 
+  // Get the current access token
+  static String? get accessToken => supabase.auth.currentSession?.accessToken;
+
   // Sign in with email and password
   static Future<AuthResponse> signInWithEmail({
     required String email,

@@ -282,7 +282,11 @@ class _ChatPageState extends State<ChatPage> {
       context: context,
       useRootNavigator: true,
       barrierColor: Colors.black54,
-      builder: (ctx) => AlertDialog(
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          nameController.removeListener(() {});
+          nameController.addListener(() => setDialogState(() {}));
+          return AlertDialog(
         backgroundColor: const Color(0xFF3D2A5C),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text(
@@ -406,6 +410,7 @@ class _ChatPageState extends State<ChatPage> {
                 name: groupData['name'],
                 avatar: groupData['initials'],
                 memberCount: 1,
+                inviteCode: groupData['code'] as String?,
               ),
             ),
           );
@@ -741,6 +746,7 @@ class _ChatPageState extends State<ChatPage> {
                     name: group.name,
                     avatar: group.initials,
                     memberCount: group.memberCount,
+                    inviteCode: group.inviteCode.isNotEmpty ? group.inviteCode : null,
                   ),
                 ),
               );

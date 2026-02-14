@@ -1,17 +1,20 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/chat_service.dart';
 import '../../widgets/glass_container.dart';
 import 'timeline_page.dart';
 import '../time_capsule/time_capsule_list_page.dart';
+import '../vault/vault_list_page.dart';
 
 class ChatScreen extends StatefulWidget {
   final String groupId;
   final String name;
   final String avatar;
   final int memberCount;
+  final String? inviteCode;
 
   const ChatScreen({
     Key? key,
@@ -19,6 +22,7 @@ class ChatScreen extends StatefulWidget {
     required this.name,
     required this.avatar,
     this.memberCount = 0,
+    this.inviteCode,
   }) : super(key: key);
 
   @override
@@ -327,6 +331,21 @@ class _ChatScreenState extends State<ChatScreen> {
                       context,
                       MaterialPageRoute(
                         builder: (_) => TimeCapsuleListPage(
+                          groupId: widget.groupId,
+                          groupName: widget.name,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.lock_outline, color: Colors.white),
+                  tooltip: 'Vaults',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => VaultListPage(
                           groupId: widget.groupId,
                           groupName: widget.name,
                         ),
@@ -815,6 +834,70 @@ class _ChatScreenState extends State<ChatScreen> {
                 color: Colors.white.withOpacity(0.6),
               ),
             ),
+            if (widget.inviteCode != null && widget.inviteCode!.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              Text(
+                'Invite Code',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white.withOpacity(0.5),
+                ),
+              ),
+              const SizedBox(height: 8),
+              InkWell(
+                onTap: () {
+                  Clipboard.setData(ClipboardData(text: widget.inviteCode!));
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    SnackBar(
+                      content: Text('Invite code "${widget.inviteCode}" copied!'),
+                      backgroundColor: Colors.green,
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.2),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          widget.inviteCode!,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 3,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      Icon(
+                        Icons.copy,
+                        size: 20,
+                        color: Colors.white.withOpacity(0.7),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Tap to copy and share with others',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.white.withOpacity(0.4),
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
           ],
         ),
