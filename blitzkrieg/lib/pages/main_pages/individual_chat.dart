@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/chat_service.dart';
 import '../../widgets/glass_container.dart';
+import '../time_capsule/time_capsule_list_page.dart';
 
 class ChatScreen extends StatefulWidget {
   final String groupId;
@@ -24,6 +25,8 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
+  static const String _geminiBotId = '00000000-0000-0000-0000-000000000001';
+
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FocusNode _inputFocus = FocusNode();
@@ -222,6 +225,10 @@ class _ChatScreenState extends State<ChatScreen> {
     return msg.senderId == ChatService.currentProfileId;
   }
 
+  bool _isBotMessage(ChatMessage msg) {
+    return msg.senderId == _geminiBotId;
+  }
+
   @override
   void dispose() {
     _inputController.dispose();
@@ -299,6 +306,24 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
               actions: [
                 IconButton(
+                  icon: const Icon(
+                    Icons.hourglass_bottom_rounded,
+                    color: Colors.white,
+                  ),
+                  tooltip: 'Time Capsules',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => TimeCapsuleListPage(
+                          groupId: widget.groupId,
+                          groupName: widget.name,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                IconButton(
                   icon: const Icon(Icons.info_outline, color: Colors.white),
                   onPressed: () => _showGroupInfo(),
                 ),
@@ -344,6 +369,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
                             final msg = _messages[index];
                             final isMe = _isMyMessage(msg);
+                            final isBot = _isBotMessage(msg);
                             final showSender =
                                 !isMe &&
                                 (index == 0 ||
@@ -363,18 +389,40 @@ class _ChatScreenState extends State<ChatScreen> {
                                         left: 12,
                                         bottom: 4,
                                       ),
-                                      child: Text(
-                                        msg.senderDisplayName.isNotEmpty
-                                            ? msg.senderDisplayName
-                                            : msg.senderUsername,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: _getSenderColor(msg.senderId),
-                                        ),
-                                      ),
+                                      child: isBot
+                                          ? Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Icon(
+                                                  Icons.auto_awesome,
+                                                  size: 14,
+                                                  color: Color(0xFF06B6D4),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                const Text(
+                                                  'Gemini AI',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Color(0xFF06B6D4),
+                                                  ),
+                                                ),
+                                              ],
+                                            )
+                                          : Text(
+                                              msg.senderDisplayName.isNotEmpty
+                                                  ? msg.senderDisplayName
+                                                  : msg.senderUsername,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                                color: _getSenderColor(
+                                                  msg.senderId,
+                                                ),
+                                              ),
+                                            ),
                                     ),
-                                  _buildMessageBubble(msg, isMe),
+                                  _buildMessageBubble(msg, isMe, isBot: isBot),
                                 ],
                               ),
                             );
@@ -510,7 +558,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildMessageBubble(ChatMessage msg, bool isMe) {
+  Widget _buildMessageBubble(ChatMessage msg, bool isMe, {bool isBot = false}) {
     if (isMe) {
       // My messages: Solid gradient color (no glass, stands out)
       return Align(
@@ -537,6 +585,38 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
             child: _buildMessageContent(msg, isMe),
           ),
+        ),
+      );
+    } else if (isBot) {
+      // Bot messages: Special sparkly gradient
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: Container(
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.78,
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF0D9488), Color(0xFF7C3AED)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+              bottomLeft: Radius.circular(4),
+              bottomRight: Radius.circular(20),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0D9488).withOpacity(0.3),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: _buildMessageContent(msg, isMe),
         ),
       );
     } else {
