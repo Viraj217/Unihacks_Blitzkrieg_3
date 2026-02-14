@@ -6,6 +6,12 @@ import { createGroup, getGroupById, updateGroup, deleteGroup, joinGroup, leaveGr
 import { verifyUser } from "../middleware/verify.js";
 import { getGroupCapsules } from '../controllers/capsuleController.js';
 
+import { getGroupTimeline, searchEvents } from '../controllers/timelineController.js';
+
+// Add these routes
+Grouter.get('/:groupId/timeline', getGroupTimeline);
+Grouter.get('/:groupId/timeline/search', searchEvents);
+
 // Add this route
 Grouter.get('/:groupId/capsules', getGroupCapsules);
 
