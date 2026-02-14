@@ -234,3 +234,212 @@ CREATE TRIGGER trigger_mark_contributed
     AFTER INSERT ON capsule_contents
     FOR EACH ROW
     EXECUTE FUNCTION mark_contributor_contributed();
+
+
+-- =============================================
+-- TIMELINE EVENTS
+-- =============================================
+
+-- Timeline events table (main events)
+CREATE TABLE IF NOT EXISTS timeline_events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    group_id UUID REFERENCES groups(id) ON DELETE CASCADE NOT NULL,
+    created_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
+    title VARCHAR(200) NOT NULL,
+    description TEXT,
+    event_date DATE NOT NULL,
+    location VARCHAR(255),
+    event_type VARCHAR(50) DEFAULT 'memory', -- memory, milestone, celebration, trip, achievement, other
+    cover_image_url TEXT,
+    is_pinned BOOLEAN DEFAULT false,
+    tags TEXT[],
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Timeline event media (photos, videos)
+CREATE TABLE IF NOT EXISTS timeline_event_media (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_id UUID REFERENCES timeline_events(id) ON DELETE CASCADE NOT NULL,
+    uploaded_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
+    media_type VARCHAR(20) NOT NULL CHECK (media_type IN ('photo', 'video')),
+    media_url TEXT NOT NULL,
+    thumbnail_url TEXT,
+    caption TEXT,
+    width INTEGER,
+    height INTEGER,
+    file_size_bytes BIGINT,
+    duration_seconds INTEGER,
+    order_index INTEGER DEFAULT 0,
+    uploaded_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Timeline event participants (who was there)
+CREATE TABLE IF NOT EXISTS timeline_event_participants (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_id UUID REFERENCES timeline_events(id) ON DELETE CASCADE NOT NULL,
+    user_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+    added_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
+    added_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(event_id, user_id)
+);
+
+-- Timeline event comments
+CREATE TABLE IF NOT EXISTS timeline_event_comments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_id UUID REFERENCES timeline_events(id) ON DELETE CASCADE NOT NULL,
+    user_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+    comment_text TEXT NOT NULL,
+    parent_comment_id UUID REFERENCES timeline_event_comments(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Timeline event reactions
+CREATE TABLE IF NOT EXISTS timeline_event_reactions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_id UUID REFERENCES timeline_events(id) ON DELETE CASCADE NOT NULL,
+    user_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+    emoji VARCHAR(10) NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(event_id, user_id)
+);
+
+-- Timeline event views (analytics)
+CREATE TABLE IF NOT EXISTS timeline_event_views (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_id UUID REFERENCES timeline_events(id) ON DELETE CASCADE NOT NULL,
+    user_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+    viewed_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(event_id, user_id)
+);
+
+-- =============================================
+-- INDEXES
+-- =============================================
+
+CREATE INDEX idx_timeline_events_group_id ON timeline_events(group_id);
+CREATE INDEX idx_timeline_events_created_by ON timeline_events(created_by);
+CREATE INDEX idx_timeline_events_event_date ON timeline_events(event_date DESC);
+CREATE INDEX idx_timeline_events_event_type ON timeline_events(event_type);
+CREATE INDEX idx_timeline_events_is_pinned ON timeline_events(is_pinned) WHERE is_pinned = true;
+CREATE INDEX idx_timeline_events_tags ON timeline_events USING GIN(tags);
+
+CREATE INDEX idx_timeline_event_media_event_id ON timeline_event_media(event_id);
+CREATE INDEX idx_timeline_event_media_uploaded_by ON timeline_event_media(uploaded_by);
+CREATE INDEX idx_timeline_event_media_order ON timeline_event_media(order_index);
+
+CREATE INDEX idx_timeline_event_participants_event_id ON timeline_event_participants(event_id);
+CREATE INDEX idx_timeline_event_participants_user_id ON timeline_event_participants(user_id);
+
+CREATE INDEX idx_timeline_event_comments_event_id ON timeline_event_comments(event_id);
+CREATE INDEX idx_timeline_event_comments_user_id ON timeline_event_comments(user_id);
+CREATE INDEX idx_timeline_event_comments_parent ON timeline_event_comments(parent_comment_id);
+
+CREATE INDEX idx_timeline_event_reactions_event_id ON timeline_event_reactions(event_id);
+CREATE INDEX idx_timeline_event_views_event_id ON timeline_event_views(event_id);
+
+-- =============================================
+-- TRIGGERS
+-- =============================================
+
+-- Auto-update updated_at timestamp
+CREATE TRIGGER update_timeline_events_updated_at
+    BEFORE UPDATE ON timeline_events
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_timeline_event_comments_updated_at
+    BEFORE UPDATE ON timeline_event_comments
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- Auto-set cover image from first media if not set
+CREATE OR REPLACE FUNCTION set_event_cover_image()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- If event doesn't have a cover image, set it to the first photo
+    IF (SELECT cover_image_url FROM timeline_events WHERE id = NEW.event_id) IS NULL 
+       AND NEW.media_type = 'photo' THEN
+        UPDATE timeline_events
+        SET cover_image_url = NEW.media_url
+        WHERE id = NEW.event_id;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_set_cover_image
+    AFTER INSERT ON timeline_event_media
+    FOR EACH ROW
+    EXECUTE FUNCTION set_event_cover_image();
+
+-- =============================================
+-- FUNCTIONS
+-- =============================================
+
+-- Get event statistics
+CREATE OR REPLACE FUNCTION get_timeline_event_stats(p_event_id UUID)
+RETURNS TABLE (
+    media_count BIGINT,
+    photo_count BIGINT,
+    video_count BIGINT,
+    participant_count BIGINT,
+    comment_count BIGINT,
+    reaction_count BIGINT,
+    view_count BIGINT
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        COUNT(DISTINCT tem.id) as media_count,
+        COUNT(DISTINCT tem.id) FILTER (WHERE tem.media_type = 'photo') as photo_count,
+        COUNT(DISTINCT tem.id) FILTER (WHERE tem.media_type = 'video') as video_count,
+        COUNT(DISTINCT tep.id) as participant_count,
+        COUNT(DISTINCT tec.id) as comment_count,
+        COUNT(DISTINCT ter.id) as reaction_count,
+        COUNT(DISTINCT tev.id) as view_count
+    FROM timeline_events te
+    LEFT JOIN timeline_event_media tem ON te.id = tem.event_id
+    LEFT JOIN timeline_event_participants tep ON te.id = tep.event_id
+    LEFT JOIN timeline_event_comments tec ON te.id = tec.event_id
+    LEFT JOIN timeline_event_reactions ter ON te.id = ter.event_id
+    LEFT JOIN timeline_event_views tev ON te.id = tev.event_id
+    WHERE te.id = p_event_id
+    GROUP BY te.id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Search events by text
+CREATE OR REPLACE FUNCTION search_timeline_events(
+    p_group_id UUID,
+    p_search_text TEXT
+)
+RETURNS TABLE (
+    id UUID,
+    title VARCHAR,
+    description TEXT,
+    event_date DATE,
+    rank REAL
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        te.id,
+        te.title,
+        te.description,
+        te.event_date,
+        ts_rank(
+            to_tsvector('english', te.title || ' ' || COALESCE(te.description, '') || ' ' || COALESCE(te.location, '')),
+            plainto_tsquery('english', p_search_text)
+        ) as rank
+    FROM timeline_events te
+    WHERE te.group_id = p_group_id
+      AND (
+          to_tsvector('english', te.title || ' ' || COALESCE(te.description, '') || ' ' || COALESCE(te.location, '')) 
+          @@ plainto_tsquery('english', p_search_text)
+          OR p_search_text = ANY(te.tags)
+      )
+    ORDER BY rank DESC;
+END;
+$$ LANGUAGE plpgsql;
