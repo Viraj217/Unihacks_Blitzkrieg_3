@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/chat_service.dart';
 import '../../widgets/glass_container.dart';
+import 'timeline_page.dart';
 import '../time_capsule/time_capsule_list_page.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -305,6 +306,16 @@ class _ChatScreenState extends State<ChatScreen> {
                 ],
               ),
               actions: [
+                IconButton(
+                  icon: const Icon(Icons.calendar_today, color: Colors.white),
+                  tooltip: 'Timeline',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const TimelinePage()),
+                    );
+                  },
+                ),
                 IconButton(
                   icon: const Icon(
                     Icons.hourglass_bottom_rounded,
