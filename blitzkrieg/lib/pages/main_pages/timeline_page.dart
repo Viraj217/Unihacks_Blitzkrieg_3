@@ -1,18 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'dart:math';
 
 class TimelineEvent {
   String id;
   String title;
   String date;
   String? imagePath;
+  String? imageUrl;
+  String? assetImage;
   
   TimelineEvent({
     required this.id,
     required this.title,
     required this.date,
     this.imagePath,
+    this.imageUrl,
+    this.assetImage,
   });
 }
 
@@ -24,28 +29,49 @@ class TimelinePage extends StatefulWidget {
 }
 
 class _TimelinePageState extends State<TimelinePage> {
-  final List<TimelineEvent> _events = [
-    TimelineEvent(
-      id: '1',
-      title: 'Sanjay Gandhi National Park',
-      date: '12-12-12',
-    ),
-    TimelineEvent(
-      id: '2',
-      title: 'Sanjay Gandhi National Park',
-      date: '12-12-12',
-    ),
-    TimelineEvent(
-      id: '3',
-      title: 'Sanjay Gandhi National Park',
-      date: '12-12-12',
-    ),
-    TimelineEvent(
-      id: '4',
-      title: 'Sanjay Gandhi National Park',
-      date: '12-12-12',
-    ),
+  final List<String> _eventTitles = [
+    'Sanjay Gandhi National Park',
+    'Marine Drive Adventure',
+    'Gateway of India Visit',
+    'Colaba Causeway Exploration',
+    'Bandra Fort Trek',
+    'Elephanta Caves Tour',
+    'Powai Lake Picnic',
+    'Chhatrapati Shivaji Terminal',
   ];
+
+  late List<TimelineEvent> _events;
+
+  @override
+  void initState() {
+    super.initState();
+    _events = _generateRandomEvents();
+  }
+
+  List<TimelineEvent> _generateRandomEvents() {
+    final random = Random();
+    final events = <TimelineEvent>[];
+    final shuffledTitles = List.from(_eventTitles)..shuffle(random);
+    
+    final dates = ['15-03-24', '22-05-24', '08-07-24', '30-09-24'];
+    final shuffledDates = List.from(dates)..shuffle(random);
+    
+    final assetImages = ['assets/images/Loginphoto.png'];
+    
+    for (int i = 0; i < 4; i++) {
+      final useAsset = random.nextBool();
+      
+      events.add(TimelineEvent(
+        id: '$i',
+        title: shuffledTitles[i],
+        date: shuffledDates[i],
+        assetImage: useAsset ? assetImages[random.nextInt(assetImages.length)] : null,
+        imageUrl: !useAsset ? 'https://picsum.photos/400/300?random=${random.nextInt(10000)}' : null,
+      ));
+    }
+    
+    return events;
+  }
 
   final ImagePicker _picker = ImagePicker();
 
@@ -112,6 +138,43 @@ class _TimelinePageState extends State<TimelinePage> {
             color: const Color(0xFF4A3468),
             shape: BoxShape.circle,
             border: Border.all(color: const Color(0xFF6B4C9A), width: 2),
+          ),
+          child: ClipOval(
+            child: _events[index].assetImage != null
+                ? Image.asset(
+                    _events[index].assetImage!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Center(
+                        child: Icon(
+                          Icons.image,
+                          color: Colors.white70,
+                          size: 30,
+                        ),
+                      );
+                    },
+                  )
+                : _events[index].imageUrl != null
+                    ? Image.network(
+                        _events[index].imageUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Center(
+                            child: Icon(
+                              Icons.image,
+                              color: Colors.white70,
+                              size: 30,
+                            ),
+                          );
+                        },
+                      )
+                    : Center(
+                        child: Icon(
+                          Icons.image,
+                          color: Colors.white70,
+                          size: 30,
+                        ),
+                      ),
           ),
         ),
         if (index < _events.length - 1)
@@ -321,11 +384,17 @@ class _TimelinePageState extends State<TimelinePage> {
           TextButton(
             onPressed: () {
               if (titleController.text.isNotEmpty && dateController.text.isNotEmpty) {
+                final random = Random();
+                final assetImages = ['assets/images/Loginphoto.png'];
+                final useAsset = random.nextBool();
+                
                 setState(() {
                   _events.add(TimelineEvent(
                     id: DateTime.now().toString(),
                     title: titleController.text,
                     date: dateController.text,
+                    assetImage: useAsset ? assetImages[0] : null,
+                    imageUrl: !useAsset ? 'https://picsum.photos/400/300?random=${random.nextInt(10000)}' : null,
                   ));
                 });
                 Navigator.pop(context);
