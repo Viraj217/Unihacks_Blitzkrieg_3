@@ -14,12 +14,12 @@ import {
     togglePin,
     searchEvents
 } from '../controllers/timelineController.js';
-import { verifyToken } from '../middleware/verify.js';
+import { verifyUser } from '../middleware/verify.js';
 
 const Trouter = express.Router();
 
 // All routes require authentication
-Trouter.use(verifyToken);
+Trouter.use(verifyUser);
 
 // Timeline events
 Trouter.post('/', createEvent);
