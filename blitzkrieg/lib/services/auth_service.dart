@@ -5,8 +5,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 class AuthService {
   // Get the base URL from environment or use default
   static String get _baseUrl {
-    final port = dotenv.env['PORT'] ?? '3000';
-    return 'http://192.168.29.37:$port';
+    final ip = dotenv.env['IP_ADDRESS'] ?? '10.0.2.2';
+    return 'http://$ip:3000';
   }
 
   /// Sign up a new user

@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -97,7 +98,8 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   String get _baseUrl {
-    return 'http://192.168.29.37:3000';
+    final ip = dotenv.env['IP_ADDRESS'] ?? '10.0.2.2';
+    return 'http://$ip:3000';
   }
 
   Future<String?> _getJwtToken() async {
@@ -139,17 +141,13 @@ class _ChatPageState extends State<ChatPage> {
               maxLength: 6,
               decoration: InputDecoration(
                 hintText: 'Enter Code',
-                hintStyle: TextStyle(
-                  color: Colors.white.withOpacity(0.4),
-                ),
+                hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
                 filled: true,
                 fillColor: Colors.white.withOpacity(0.1),
                 counterStyle: const TextStyle(color: Colors.white54),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: Colors.white.withOpacity(0.3),
-                  ),
+                  borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -177,10 +175,7 @@ class _ChatPageState extends State<ChatPage> {
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF7C3AED),
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 20,
-                vertical: 10,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -230,9 +225,7 @@ class _ChatPageState extends State<ChatPage> {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-        body: jsonEncode({
-          'invite_code': code,
-        }),
+        body: jsonEncode({'invite_code': code}),
       );
 
       if (response.statusCode == 200) {
@@ -250,7 +243,8 @@ class _ChatPageState extends State<ChatPage> {
         }
       } else if (response.statusCode == 400) {
         final errorData = jsonDecode(response.body);
-        final errorMsg = errorData['error'] ?? 'Invalid invite code or already a member';
+        final errorMsg =
+            errorData['error'] ?? 'Invalid invite code or already a member';
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -282,11 +276,7 @@ class _ChatPageState extends State<ChatPage> {
       context: context,
       useRootNavigator: true,
       barrierColor: Colors.black54,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          nameController.removeListener(() {});
-          nameController.addListener(() => setDialogState(() {}));
-          return AlertDialog(
+      builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF3D2A5C),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text(
@@ -313,9 +303,7 @@ class _ChatPageState extends State<ChatPage> {
                 fillColor: Colors.white.withOpacity(0.1),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: Colors.white.withOpacity(0.3),
-                  ),
+                  borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -340,9 +328,7 @@ class _ChatPageState extends State<ChatPage> {
                 fillColor: Colors.white.withOpacity(0.1),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: Colors.white.withOpacity(0.3),
-                  ),
+                  borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -363,22 +349,25 @@ class _ChatPageState extends State<ChatPage> {
               style: TextStyle(color: Colors.white.withOpacity(0.7)),
             ),
           ),
-          ElevatedButton(
-            onPressed: nameController.text.trim().isEmpty
-                ? null
-                : () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF7C3AED),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 20,
-                vertical: 10,
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: nameController,
+            builder: (_, value, __) => ElevatedButton(
+              onPressed: value.text.trim().isEmpty
+                  ? null
+                  : () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF7C3AED),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
+              child: const Text('Create'),
             ),
-            child: const Text('Create'),
           ),
         ],
       ),
@@ -396,10 +385,13 @@ class _ChatPageState extends State<ChatPage> {
           ),
         );
       }
-      final groupData = await _createGroup(nameController.text.trim(), descController.text.trim());
+      final groupData = await _createGroup(
+        nameController.text.trim(),
+        descController.text.trim(),
+      );
       if (mounted) {
         Navigator.pop(context); // Close loading dialog
-        
+
         // Navigate to chat if creation was successful
         if (groupData != null) {
           Navigator.push(
@@ -419,7 +411,10 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  Future<Map<String, dynamic>?> _createGroup(String name, String description) async {
+  Future<Map<String, dynamic>?> _createGroup(
+    String name,
+    String description,
+  ) async {
     try {
       final token = await _getJwtToken();
       if (token == null) {
@@ -468,8 +463,8 @@ class _ChatPageState extends State<ChatPage> {
         final initials = parts.length >= 2
             ? '${parts[0][0]}${parts[1][0]}'.toUpperCase()
             : name.length >= 2
-                ? name.substring(0, 2).toUpperCase()
-                : name.toUpperCase();
+            ? name.substring(0, 2).toUpperCase()
+            : name.toUpperCase();
 
         _loadGroups();
 
@@ -480,7 +475,9 @@ class _ChatPageState extends State<ChatPage> {
           'code': inviteCode,
         };
       } else {
-        throw Exception('Failed to create group: ${response.statusCode} - ${response.body}');
+        throw Exception(
+          'Failed to create group: ${response.statusCode} - ${response.body}',
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -746,7 +743,9 @@ class _ChatPageState extends State<ChatPage> {
                     name: group.name,
                     avatar: group.initials,
                     memberCount: group.memberCount,
-                    inviteCode: group.inviteCode.isNotEmpty ? group.inviteCode : null,
+                    inviteCode: group.inviteCode.isNotEmpty
+                        ? group.inviteCode
+                        : null,
                   ),
                 ),
               );

@@ -1,4 +1,4 @@
-import pool from "../config/db.js";
+import pool from "../database/pool.js";
 
 async function createGroup(req, res) {
     const { name, description, avatar_url } = req.body;

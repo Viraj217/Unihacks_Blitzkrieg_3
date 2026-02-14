@@ -9,6 +9,7 @@ import {
     buildBotPayload,
     GEMINI_BOT_ID,
 } from './gemini.js';
+import { truths, dares, sikeQuestions } from '../utils/gameData.js';
 
 let io;
 
@@ -216,6 +217,12 @@ async function handleSendMessage(socket, data) {
 
         console.log(`💬 ${socket.user.username} sent message to group ${groupId}`);
 
+        // ── Game Commands Integration ──────────────────────────────
+        // Check for game commands (/truth, /dare, /sike)
+        if (socket.user.id !== GEMINI_BOT_ID) {
+            processGameCommand(groupId, content);
+        }
+
         // ── Gemini AI Integration ──────────────────────────────
         // Don't process bot's own messages
         if (socket.user.id !== GEMINI_BOT_ID) {
@@ -371,9 +378,63 @@ function getIO() {
 }
 
 /**
- * Process a message for Gemini AI responses (runs async, non-blocking)
- * Handles both @gemini mentions and passive roasting
+ * Helper to get random item from array
  */
+function getRandom(arr) {
+    return arr[Math.floor(Math.random() * arr.length)];
+}
+
+/**
+ * Process game commands (/truth, /dare, /sike)
+ * Runs async and posts game content to the group
+ */
+async function processGameCommand(groupId, content) {
+    try {
+        console.log(`🎮 Processing game command in group ${groupId}: "${content}"`);
+        
+        let gameResponse = null;
+        let gameType = null;
+
+        if (/^\/truth/i.test(content)) {
+            gameType = 'truth';
+            gameResponse = getRandom(truths);
+            console.log(`🎭 Truth selected: ${gameResponse}`);
+        } else if (/^\/dare/i.test(content)) {
+            gameType = 'dare';
+            gameResponse = getRandom(dares);
+            console.log(`⚡ Dare selected: ${gameResponse}`);
+        } else if (/^\/sike/i.test(content)) {
+            gameType = 'sike';
+            const questionData = getRandom(sikeQuestions);
+            gameResponse = `🎯 ${questionData.question}\n\n📚 Category: ${questionData.category}\n\n(Answer: ${questionData.answer})`;
+            console.log(`🎯 Sike question selected: ${questionData.question}`);
+        }
+
+        if (!gameResponse) {
+            console.log(`❌ Not a recognized game command: "${content}"`);
+            return; // Not a game command
+        }
+
+        // Add emoji prefix based on game type
+        const emoji = gameType === 'truth' ? '🎭' : gameType === 'dare' ? '⚡' : '🎯';
+        const botMsg = await saveBotMessage(groupId, `${emoji} **${gameType.toUpperCase()}**: ${gameResponse}`);
+        
+        if (!botMsg) {
+            console.error(`❌ Failed to save bot message for game command: ${gameType}`);
+            return;
+        }
+
+        const payload = buildBotPayload(botMsg);
+        io.to(`group:${groupId}`).emit('message:new', payload);
+
+        console.log(`✅ Game command processed successfully in group ${groupId}: ${gameType}`);
+    } catch (error) {
+        console.error('❌ Game command processing error:', error.message);
+        console.error('Stack trace:', error.stack);
+        // Silently fail — never break the chat
+    }
+}
+
 async function processGeminiResponse(groupId, senderUsername, content) {
     try {
         const isMention = /@gemini/i.test(content);

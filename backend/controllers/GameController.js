@@ -1,5 +1,5 @@
 // backend/controllers/GameController.js
-import { truths, dares, sikeQuestions } from './utils/gameData.js';
+import { truths, dares, sikeQuestions } from '../utils/gameData.js';
 
 // Helper to get random item
 const getRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];

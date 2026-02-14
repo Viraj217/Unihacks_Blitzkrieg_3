@@ -4,12 +4,13 @@ import router from "./routes/user.js";
 import Crouter from "./routes/chat.js";
 import Arouter from "./routes/Auth.js";
 import Caprouter from "./routes/capsule.js";
+import Grouter from "./routes/group.js";
+import Gamerouter from "./routes/game.js";
 import { createServer } from 'http';
 import cors from 'cors';
 import { initializeSocket } from './utils/socketserver.js';
 import { startCapsuleUnlockJob } from './utils/capsuleUnlock.js';
 import Trouter from "./routes/timeline.js";
-import Vrouter from "./routes/vault.js";
 dotenv.config();
 
 
@@ -36,7 +37,8 @@ app.use("/", Arouter);
 app.use("/", Crouter);
 app.use("/", Caprouter);
 app.use("/", Trouter);
-app.use("/vault", Vrouter);
+app.use("/", Grouter);
+app.use("/", Gamerouter);
 
 startCapsuleUnlockJob();
 

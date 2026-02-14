@@ -145,17 +145,17 @@ class _BemeLandingAnimationPageState extends State<BemeLandingAnimationPage>
                 : const SizedBox.shrink(),
           ),
 
-          // 2. Multi-layer Gradient Overlay for depth
+          // 2. Multi-layer Gradient Overlay for depth - Now Purple
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Colors.black.withOpacity(0.3),
+                  AppTheme.gradientStart.withOpacity(0.3),
                   Colors.transparent,
-                  Colors.black.withOpacity(0.6),
-                  Colors.black.withOpacity(0.9),
+                  AppTheme.gradientStart.withOpacity(0.6),
+                  AppTheme.gradientStart.withOpacity(0.9),
                 ],
                 stops: const [0.0, 0.3, 0.7, 1.0],
               ),
@@ -171,32 +171,23 @@ class _BemeLandingAnimationPageState extends State<BemeLandingAnimationPage>
                   opacity: _bemeOpacity.value,
                   child: Transform.scale(
                     scale: _bemeScale.value,
-                    child: ShaderMask(
-                      shaderCallback: (bounds) => LinearGradient(
-                        colors: [
-                          Colors.white,
-                          Colors.white.withOpacity(0.9),
-                          AppTheme.primaryPurple.withOpacity(0.3),
+                    child: Text(
+                      'Beme',
+                      style: TextStyle(
+                        fontSize: 72,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        letterSpacing: 4.0,
+                        shadows: [
+                          Shadow(
+                            blurRadius: _bemeGlow.value,
+                            color: AppTheme.primaryPurple.withOpacity(0.6),
+                          ),
+                          Shadow(
+                            blurRadius: _bemeGlow.value * 2,
+                            color: Colors.white.withOpacity(0.3),
+                          ),
                         ],
-                      ).createShader(bounds),
-                      child: Text(
-                        'Beme',
-                        style: TextStyle(
-                          fontSize: 72,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                          letterSpacing: 4.0,
-                          shadows: [
-                            Shadow(
-                              blurRadius: _bemeGlow.value,
-                              color: AppTheme.primaryPurple.withOpacity(0.6),
-                            ),
-                            Shadow(
-                              blurRadius: _bemeGlow.value * 2,
-                              color: Colors.white.withOpacity(0.3),
-                            ),
-                          ],
-                        ),
                       ),
                     ),
                   ),

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:ui';
+import 'package:blitzkrieg/pages/main_pages/group_members_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -7,7 +8,6 @@ import '../../services/chat_service.dart';
 import '../../widgets/glass_container.dart';
 import 'timeline_page.dart';
 import '../time_capsule/time_capsule_list_page.dart';
-import '../vault/vault_list_page.dart';
 
 class ChatScreen extends StatefulWidget {
   final String groupId;
@@ -56,6 +56,9 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _init() async {
     await ChatService.init();
+    
+    // Connect to Socket.IO for game commands and real-time features
+    await ChatService.connectSocket();
 
     if (ChatService.currentProfileId != null) {
       _profileCache[ChatService.currentProfileId!] = {
@@ -215,6 +218,62 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
+  Future<void> _sendGameCommand(String command) async {
+    final text = '/$command';
+    final optimistic = ChatService.createOptimisticMessage(
+      groupId: widget.groupId,
+      content: text,
+    );
+
+    setState(() {
+      _messages.add(optimistic);
+      _isSending = true;
+    });
+    _scrollToBottom();
+
+    if (_isTyping) {
+      ChatService.stopTyping(widget.groupId);
+      _isTyping = false;
+    }
+
+    final sent = await ChatService.sendMessage(
+      groupId: widget.groupId,
+      content: text,
+    );
+
+    if (mounted) {
+      setState(() {
+        if (sent != null) {
+          final idx = _messages.indexWhere((m) => m.id == optimistic.id);
+          if (idx != -1) {
+            _messages[idx] = sent;
+          }
+        }
+        _isSending = false;
+      });
+    }
+  }
+
+  Widget _buildGameButton(String emoji, String command, String tooltip) {
+    return Tooltip(
+      message: tooltip,
+      child: GestureDetector(
+        onTap: _isSending ? null : () => _sendGameCommand(command),
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: _isSending
+                ? Colors.grey.withOpacity(0.3)
+                : Colors.white.withOpacity(0.15),
+            border: Border.all(color: Colors.white.withOpacity(0.3)),
+          ),
+          child: Text(emoji, style: const TextStyle(fontSize: 18)),
+        ),
+      ),
+    );
+  }
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollController.hasClients) return;
@@ -331,21 +390,6 @@ class _ChatScreenState extends State<ChatScreen> {
                       context,
                       MaterialPageRoute(
                         builder: (_) => TimeCapsuleListPage(
-                          groupId: widget.groupId,
-                          groupName: widget.name,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.lock_outline, color: Colors.white),
-                  tooltip: 'Vaults',
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => VaultListPage(
                           groupId: widget.groupId,
                           groupName: widget.name,
                         ),
@@ -476,75 +520,95 @@ class _ChatScreenState extends State<ChatScreen> {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
               child: SafeArea(
                 top: false,
-                child: Row(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.2),
-                          ),
-                        ),
-                        child: TextField(
-                          controller: _inputController,
-                          focusNode: _inputFocus,
-                          onChanged: _onTextChanged,
-                          onSubmitted: (_) => _sendMessage(),
-                          textInputAction: TextInputAction.send,
-                          decoration: InputDecoration(
-                            hintText: 'Type a message...',
-                            hintStyle: TextStyle(
-                              color: Colors.white.withOpacity(0.5),
-                            ),
-                            border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 10,
-                            ),
-                          ),
-                          style: const TextStyle(color: Colors.white),
-                        ),
+                    // Game command buttons
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        children: [
+                          _buildGameButton('🎭', 'truth', 'Truth'),
+                          const SizedBox(width: 8),
+                          _buildGameButton('⚡', 'dare', 'Dare'),
+                          const SizedBox(width: 8),
+                          _buildGameButton('🧠', 'sike', 'Sike Trivia'),
+                          const Spacer(),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    GestureDetector(
-                      onTap: _isSending ? null : _sendMessage,
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: _isSending
-                              ? Colors.grey
-                              : const Color(0xFF7C3AED),
-                          boxShadow: [
-                            BoxShadow(
-                              color:
-                                  (_isSending
-                                          ? Colors.grey
-                                          : const Color(0xFF7C3AED))
-                                      .withOpacity(0.4),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: _isSending
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Icon(
-                                Icons.send,
-                                color: Colors.white,
-                                size: 20,
+                    // Message input row
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.2),
                               ),
-                      ),
+                            ),
+                            child: TextField(
+                              controller: _inputController,
+                              focusNode: _inputFocus,
+                              onChanged: _onTextChanged,
+                              onSubmitted: (_) => _sendMessage(),
+                              textInputAction: TextInputAction.send,
+                              decoration: InputDecoration(
+                                hintText: 'Type a message...',
+                                hintStyle: TextStyle(
+                                  color: Colors.white.withOpacity(0.5),
+                                ),
+                                border: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 10,
+                                ),
+                              ),
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        GestureDetector(
+                          onTap: _isSending ? null : _sendMessage,
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: _isSending
+                                  ? Colors.grey
+                                  : const Color(0xFF7C3AED),
+                              boxShadow: [
+                                BoxShadow(
+                                  color:
+                                      (_isSending
+                                              ? Colors.grey
+                                              : const Color(0xFF7C3AED))
+                                          .withOpacity(0.4),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: _isSending
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Icon(
+                                    Icons.send,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -850,7 +914,9 @@ class _ChatScreenState extends State<ChatScreen> {
                   Clipboard.setData(ClipboardData(text: widget.inviteCode!));
                   ScaffoldMessenger.of(ctx).showSnackBar(
                     SnackBar(
-                      content: Text('Invite code "${widget.inviteCode}" copied!'),
+                      content: Text(
+                        'Invite code "${widget.inviteCode}" copied!',
+                      ),
                       backgroundColor: Colors.green,
                       duration: const Duration(seconds: 2),
                     ),
@@ -859,13 +925,14 @@ class _ChatScreenState extends State<ChatScreen> {
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 14,
+                    horizontal: 16,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.2),
-                    ),
+                    border: Border.all(color: Colors.white.withOpacity(0.2)),
                   ),
                   child: Row(
                     children: [
@@ -898,6 +965,35 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
               ),
             ],
+            const SizedBox(height: 24),
+            // View Members Button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx); // Close sheet
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => GroupMembersPage(
+                        groupId: widget.groupId,
+                        groupName: widget.name,
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.people),
+                label: const Text('View Members'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white.withOpacity(0.1),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+            ),
             const SizedBox(height: 24),
           ],
         ),

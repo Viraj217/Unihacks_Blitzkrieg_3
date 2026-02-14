@@ -137,8 +137,8 @@ class ChatService {
   static final _connectionController = StreamController<bool>.broadcast();
 
   static String get _baseUrl {
-    final port = dotenv.env['PORT'] ?? '3000';
-    return 'http://192.168.29.37:$port';
+    final ip = dotenv.env['IP_ADDRESS'] ?? '10.0.2.2';
+    return 'http://$ip:3000';
   }
 
   static bool get isConnected => _isConnected;
@@ -218,11 +218,19 @@ class ChatService {
 
   /// Connect to Socket.IO server (call when backend is running)
   static Future<void> connectSocket() async {
-    if (_socket != null && _isConnected) return;
+    if (_socket != null && _isConnected) {
+      print('🔌 Socket already connected');
+      return;
+    }
     await init();
 
     final token = supabase.auth.currentSession?.accessToken;
-    if (token == null) return;
+    if (token == null) {
+      print('❌ No auth token available for Socket.IO connection');
+      return;
+    }
+
+    print('🔌 Attempting to connect to Socket.IO server at $_baseUrl');
 
     _socket = IO.io(
       _baseUrl,
@@ -238,34 +246,40 @@ class ChatService {
 
     _socket!.onConnect((_) {
       _isConnected = true;
+      print('✅ Socket.IO connected successfully');
       _connectionController.add(true);
     });
 
     _socket!.onDisconnect((_) {
       _isConnected = false;
+      print('❌ Socket.IO disconnected');
       _connectionController.add(false);
     });
 
-    _socket!.onConnectError((_) {
+    _socket!.onConnectError((error) {
       _isConnected = false;
+      print('❌ Socket.IO connection error: $error');
       _connectionController.add(false);
     });
 
     _socket!.on('message:new', (data) {
+      print('📨 Received new message via Socket.IO: $data');
       _socketMessageController.add(
         ChatMessage.fromSocketEvent(Map<String, dynamic>.from(data)),
       );
     });
 
     _socket!.on('typing:user', (data) {
+      print('⌨️ Received typing indicator: $data');
       _typingController.add(Map<String, dynamic>.from(data));
     });
 
     _socket!.on('error', (data) {
-      print('Socket error: $data');
+      print('❌ Socket.IO error: $data');
     });
 
     _socket!.connect();
+    print('🔌 Socket.IO connection initiated...');
   }
 
   static void joinGroupRoom(String groupId) =>
@@ -398,6 +412,21 @@ class ChatService {
     await init();
     if (_currentProfileId == null) return null;
 
+    print('📤 Sending message: "$content" to group $groupId');
+
+    // Check if this is a game command - if so, send via Socket.IO
+    if (_isGameCommand(content)) {
+      print('🎮 Game command detected, routing via Socket.IO');
+      return _sendGameCommandViaSocket(
+        groupId,
+        content,
+        messageType,
+        mediaUrl,
+        replyToId,
+      );
+    }
+
+    print('💬 Regular message, sending via Supabase');
     try {
       final row = await supabase
           .from('chat_messages')
@@ -429,6 +458,60 @@ class ChatService {
       }
       return null;
     }
+  }
+
+  /// Check if a message contains a game command
+  static bool _isGameCommand(String content) {
+    final trimmedContent = content.trim().toLowerCase();
+    final isGameCommand =
+        trimmedContent.startsWith('/truth') ||
+        trimmedContent.startsWith('/dare') ||
+        trimmedContent.startsWith('/sike');
+
+    print('🎮 Game command check: "$content" -> isGameCommand: $isGameCommand');
+    return isGameCommand;
+  }
+
+  /// Send game command via Socket.IO to trigger game processing
+  static Future<ChatMessage?> _sendGameCommandViaSocket(
+    String groupId,
+    String content,
+    String messageType,
+    String? mediaUrl,
+    String? replyToId,
+  ) async {
+    print('🎮 Attempting to send game command via Socket.IO...');
+
+    if (!_isConnected || _socket == null) {
+      print(
+        '❌ Socket not connected, cannot send game command. _isConnected: $_isConnected, _socket: $_socket',
+      );
+      return null;
+    }
+
+    print('✅ Socket is connected, sending game command: $content');
+
+    // Create optimistic message
+    final optimisticMessage = createOptimisticMessage(
+      groupId: groupId,
+      content: content,
+      messageType: messageType,
+      mediaUrl: mediaUrl,
+      replyToId: replyToId,
+    );
+
+    // Send via Socket.IO to trigger game command processing
+    _socket!.emit('message:send', {
+      'groupId': groupId,
+      'content': content,
+      'messageType': messageType,
+      'mediaUrl': mediaUrl,
+      'replyToId': replyToId,
+      'tempId': optimisticMessage.id,
+    });
+
+    print('🎮 Game command sent via Socket.IO: $content');
+    return optimisticMessage;
   }
 
   /// Subscribe to new messages in a group via Supabase Realtime.
@@ -496,11 +579,32 @@ class ChatService {
     }
   }
 
+  /// Get members of a group
+  static Future<List<Map<String, dynamic>>> getGroupMembers(
+    String groupId,
+  ) async {
+    try {
+      final data = await supabase
+          .from('group_members')
+          .select('profiles(id, username, display_name, avatar_url, email)')
+          .eq('group_id', groupId);
+
+      return List<Map<String, dynamic>>.from(
+        data.map((row) => row['profiles'] as Map<String, dynamic>),
+      );
+    } catch (e) {
+      print('Error fetching group members: $e');
+      return [];
+    }
+  }
+
   /// Create an optimistic message (shown immediately in UI before DB confirms)
   static ChatMessage createOptimisticMessage({
     required String groupId,
     required String content,
     String messageType = 'text',
+    String? mediaUrl,
+    String? replyToId,
   }) {
     return ChatMessage(
       id: 'temp-${_uuid.v4()}',
@@ -510,6 +614,8 @@ class ChatService {
       senderDisplayName: _currentDisplayName ?? 'You',
       messageType: messageType,
       content: content,
+      mediaUrl: mediaUrl,
+      replyToId: replyToId,
       isOptimistic: true,
       createdAt: DateTime.now(),
     );

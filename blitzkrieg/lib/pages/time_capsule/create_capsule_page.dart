@@ -16,6 +16,7 @@ class _CreateCapsulePageState extends State<CreateCapsulePage> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descController = TextEditingController();
+  final _messageController = TextEditingController();
   DateTime _unlockDate = DateTime.now().add(const Duration(days: 30));
   bool _isCollaborative = true;
   bool _isCreating = false;
@@ -24,6 +25,7 @@ class _CreateCapsulePageState extends State<CreateCapsulePage> {
   void dispose() {
     _titleController.dispose();
     _descController.dispose();
+    _messageController.dispose();
     super.dispose();
   }
 
@@ -33,13 +35,24 @@ class _CreateCapsulePageState extends State<CreateCapsulePage> {
     setState(() => _isCreating = true);
 
     try {
-      await TimeCapsuleService.createCapsule(
+      final capsule = await TimeCapsuleService.createCapsule(
         groupId: widget.groupId,
         title: _titleController.text.trim(),
         description: _descController.text.trim(),
         unlockDate: _unlockDate,
         isCollaborative: _isCollaborative,
       );
+
+      if (capsule != null) {
+        final message = _messageController.text.trim();
+        if (message.isNotEmpty) {
+          await TimeCapsuleService.addContent(
+            capsuleId: capsule.id,
+            contentType: 'note',
+            contentText: message,
+          );
+        }
+      }
 
       if (mounted) {
         Navigator.pop(context);
@@ -233,6 +246,54 @@ class _CreateCapsulePageState extends State<CreateCapsulePage> {
                           activeColor: const Color(0xFF7C3AED),
                           onChanged: (v) =>
                               setState(() => _isCollaborative = v),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  GlassContainer(
+                    opacity: 0.1,
+                    borderRadius: BorderRadius.circular(24),
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Message',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'First message is required',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.6),
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _messageController,
+                          style: const TextStyle(color: Colors.white),
+                          maxLines: 4,
+                          decoration: InputDecoration(
+                            hintText: 'Type your message...',
+                            hintStyle: TextStyle(
+                              color: Colors.white.withOpacity(0.4),
+                            ),
+                            enabledBorder: UnderlineInputBorder(
+                              borderSide: BorderSide(
+                                color: Colors.white.withOpacity(0.3),
+                              ),
+                            ),
+                            focusedBorder: const UnderlineInputBorder(
+                              borderSide: BorderSide(color: Color(0xFF7C3AED)),
+                            ),
+                          ),
                         ),
                       ],
                     ),
