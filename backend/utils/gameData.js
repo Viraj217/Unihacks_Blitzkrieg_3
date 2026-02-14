@@ -16,23 +16,17 @@ export const dares = [
     "Post a weird selfie on your story and leave it for 1 hour."
 ];
 
-export const sikeQuestions = [
-    {
-        id: 1,
-        question: "In the state of Georgia, it’s illegal to eat what with a fork?",
-        answer: "Fried Chicken",
-        category: "Laws"
-    },
-    {
-        id: 2,
-        question: "What was the first toy to be advertised on television?",
-        answer: "Mr. Potato Head",
-        category: "History"
-    },
-    {
-        id: 3,
-        question: "Which animal produces cubes shaped poop?",
-        answer: "Wombat",
-        category: "Nature"
-    }
+// backend/data/gameData.js
+
+export const mostLikelyQuestions = [
+    "Who is most likely to survive a zombie apocalypse?",
+    "Who is most likely to become a famous YouTuber?",
+    "Who is most likely to forget their own birthday?",
+    "Who is most likely to trip over nothing?",
+    "Who is most likely to join a cult by accident?",
+    "Who is most likely to marry a stranger in Vegas?",
+    "Who is most likely to cry during a sad movie?",
+    "Who is most likely to spend all their money on food?",
+    "Who is most likely to get arrested for something silly?",
+    "Who is most likely to become a cat lady/man?"
 ];
