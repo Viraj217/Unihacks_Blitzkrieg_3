@@ -1,5 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/chat_service.dart';
 import '../../services/supabase_service.dart';
@@ -27,8 +29,10 @@ class _ChatPageState extends State<ChatPage> {
     _loadGroups();
     _subscribeToNewMessages();
 
-    // Attempt Socket.IO connection (works when backend is running)
-    ChatService.connectSocket().catchError((_) {});
+    // Ensure ChatService initialized and attempt Socket.IO connection
+    ChatService.init().whenComplete(() {
+      ChatService.connectSocket().catchError((_) {});
+    });
   }
 
   Future<void> _loadGroups() async {
@@ -92,123 +96,126 @@ class _ChatPageState extends State<ChatPage> {
     });
   }
 
+  String get _baseUrl {
+    return 'http://192.168.29.37:3000';
+  }
+
+  Future<String?> _getJwtToken() async {
+    final session = supabase.auth.currentSession;
+    return session?.accessToken;
+  }
+
   Future<void> _showJoinGroupDialog() async {
     final codeController = TextEditingController();
     final result = await showDialog<String>(
       context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: GlassContainer(
-          borderRadius: BorderRadius.circular(24),
-          padding: const EdgeInsets.all(24),
-          opacity: 0.2, // Darker glass
-          blur: 20,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Join a Group',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: codeController,
-                textCapitalization: TextCapitalization.characters,
-                style: const TextStyle(
-                  color: Colors.white,
-                  letterSpacing: 4,
-                  fontSize: 20,
-                ),
-                textAlign: TextAlign.center,
-                maxLength: 6,
-                decoration: InputDecoration(
-                  hintText: 'INVITE CODE',
-                  hintStyle: TextStyle(
-                    color: Colors.white.withOpacity(0.4),
-                    letterSpacing: 4,
-                  ),
-                  filled: true,
-                  fillColor: Colors.white.withOpacity(0.1),
-                  counterStyle: const TextStyle(color: Colors.white54),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(
-                      color: Colors.white.withOpacity(0.2),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(
-                      color: Color(0xFF7C3AED),
-                      width: 2,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    child: Text(
-                      'Cancel',
-                      style: TextStyle(color: Colors.white.withOpacity(0.7)),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: () =>
-                        Navigator.pop(ctx, codeController.text.trim()),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF7C3AED),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 12,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text('Join'),
-                  ),
-                ],
-              ),
-            ],
+      useRootNavigator: true,
+      barrierColor: Colors.black54,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF3D2A5C),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Join a Group',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
           ),
         ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            TextField(
+              controller: codeController,
+              textCapitalization: TextCapitalization.characters,
+              style: const TextStyle(
+                color: Colors.white,
+                letterSpacing: 2,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+              maxLength: 6,
+              decoration: InputDecoration(
+                hintText: 'Enter Code',
+                hintStyle: TextStyle(
+                  color: Colors.white.withOpacity(0.4),
+                ),
+                filled: true,
+                fillColor: Colors.white.withOpacity(0.1),
+                counterStyle: const TextStyle(color: Colors.white54),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: Colors.white.withOpacity(0.3),
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(
+                    color: Color(0xFF7C3AED),
+                    width: 2,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: Colors.white.withOpacity(0.7)),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: codeController.text.trim().isEmpty
+                ? null
+                : () => Navigator.pop(ctx, codeController.text.trim()),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF7C3AED),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 10,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text('Join'),
+          ),
+        ],
       ),
     );
 
     if (result != null && result.isNotEmpty) {
-      _joinGroupWithCode(result.toUpperCase());
+      // show blocking loading dialog while joining
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          useRootNavigator: true,
+          builder: (_) => const Center(
+            child: CircularProgressIndicator(color: Color(0xFF7C3AED)),
+          ),
+        );
+      }
+      await _joinGroupWithCode(result.toUpperCase());
+      if (mounted) Navigator.pop(context);
     }
   }
 
   Future<void> _joinGroupWithCode(String code) async {
     try {
-      await ChatService.init();
-      final profileId = ChatService.currentProfileId;
-      if (profileId == null) return;
-
-      // Find group by invite code
-      final groupData = await supabase
-          .from('groups')
-          .select()
-          .eq('invite_code', code)
-          .eq('is_active', true)
-          .maybeSingle();
-
-      if (groupData == null) {
+      final token = await _getJwtToken();
+      if (token == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Invalid invite code'),
+              content: Text('Authentication failed. Please log in again.'),
               backgroundColor: Colors.redAccent,
             ),
           );
@@ -216,40 +223,44 @@ class _ChatPageState extends State<ChatPage> {
         return;
       }
 
-      // Check if already a member
-      final existing = await supabase
-          .from('group_members')
-          .select('id')
-          .eq('group_id', groupData['id'])
-          .eq('user_id', profileId)
-          .maybeSingle();
+      // Call backend endpoint to join group by invite code
+      final response = await http.post(
+        Uri.parse('$_baseUrl/group/0/join'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'invite_code': code,
+        }),
+      );
 
-      if (existing != null) {
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        final groupData = responseData['group'];
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('You are already in this group'),
+            SnackBar(
+              content: Text('Joined "${groupData['name']}"!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          _loadGroups();
+        }
+      } else if (response.statusCode == 400) {
+        final errorData = jsonDecode(response.body);
+        final errorMsg = errorData['error'] ?? 'Invalid invite code or already a member';
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMsg),
               backgroundColor: Colors.orangeAccent,
             ),
           );
         }
-        return;
-      }
-
-      // Join
-      await supabase.from('group_members').insert({
-        'group_id': groupData['id'],
-        'user_id': profileId,
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Joined "${groupData['name']}"!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        _loadGroups();
+      } else {
+        throw Exception('Failed to join group: ${response.statusCode}');
       }
     } catch (e) {
       if (mounted) {
@@ -269,164 +280,202 @@ class _ChatPageState extends State<ChatPage> {
 
     final result = await showDialog<bool>(
       context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: GlassContainer(
-          borderRadius: BorderRadius.circular(24),
-          padding: const EdgeInsets.all(24),
-          opacity: 0.2, // More opaque for dialog
-          blur: 20,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Create Group',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: nameController,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Group name',
-                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
-                  filled: true,
-                  fillColor: Colors.white.withOpacity(0.1),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(
-                      color: Colors.white.withOpacity(0.2),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(
-                      color: Color(0xFF7C3AED),
-                      width: 2,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: descController,
-                style: const TextStyle(color: Colors.white),
-                maxLines: 2,
-                decoration: InputDecoration(
-                  hintText: 'Description (optional)',
-                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
-                  filled: true,
-                  fillColor: Colors.white.withOpacity(0.1),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(
-                      color: Colors.white.withOpacity(0.2),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(
-                      color: Color(0xFF7C3AED),
-                      width: 2,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(ctx, false),
-                    child: Text(
-                      'Cancel',
-                      style: TextStyle(color: Colors.white.withOpacity(0.7)),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: () => Navigator.pop(ctx, true),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF7C3AED),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 12,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text('Create'),
-                  ),
-                ],
-              ),
-            ],
+      useRootNavigator: true,
+      barrierColor: Colors.black54,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF3D2A5C),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Create Group',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
           ),
         ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            TextField(
+              controller: nameController,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: 'Group Name',
+                labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+                hintText: 'Enter group name',
+                hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
+                filled: true,
+                fillColor: Colors.white.withOpacity(0.1),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: Colors.white.withOpacity(0.3),
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(
+                    color: Color(0xFF7C3AED),
+                    width: 2,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: descController,
+              style: const TextStyle(color: Colors.white),
+              maxLines: 2,
+              decoration: InputDecoration(
+                labelText: 'Description (Optional)',
+                labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+                hintText: 'Enter group description',
+                hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
+                filled: true,
+                fillColor: Colors.white.withOpacity(0.1),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: Colors.white.withOpacity(0.3),
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(
+                    color: Color(0xFF7C3AED),
+                    width: 2,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: Colors.white.withOpacity(0.7)),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: nameController.text.trim().isEmpty
+                ? null
+                : () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF7C3AED),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 10,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text('Create'),
+          ),
+        ],
       ),
     );
 
     if (result == true && nameController.text.trim().isNotEmpty) {
-      _createGroup(nameController.text.trim(), descController.text.trim());
+      // show blocking loading dialog while creating
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          useRootNavigator: true,
+          builder: (_) => const Center(
+            child: CircularProgressIndicator(color: Color(0xFF7C3AED)),
+          ),
+        );
+      }
+      final groupData = await _createGroup(nameController.text.trim(), descController.text.trim());
+      if (mounted) {
+        Navigator.pop(context); // Close loading dialog
+        
+        // Navigate to chat if creation was successful
+        if (groupData != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ChatScreen(
+                groupId: groupData['id'],
+                name: groupData['name'],
+                avatar: groupData['initials'],
+                memberCount: 1,
+              ),
+            ),
+          );
+        }
+      }
     }
   }
 
-  Future<void> _createGroup(String name, String description) async {
+  Future<Map<String, dynamic>?> _createGroup(String name, String description) async {
     try {
-      await ChatService.init();
-      final profileId = ChatService.currentProfileId;
-      if (profileId == null) {
+      final token = await _getJwtToken();
+      if (token == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text(
-                'Could not find your profile. Please log in again.',
-              ),
+              content: Text('Authentication failed. Please log in again.'),
               backgroundColor: Colors.redAccent,
             ),
           );
         }
-        return;
+        return null;
       }
 
-      // Generate a simple invite code
-      final code = DateTime.now().millisecondsSinceEpoch
-          .toRadixString(36)
-          .substring(0, 6)
-          .toUpperCase();
+      // Call backend endpoint to create group
+      final response = await http.post(
+        Uri.parse('$_baseUrl/group/create'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'name': name,
+          'description': description.isEmpty ? null : description,
+          'avatar_url': null,
+        }),
+      );
 
-      final groupRow = await supabase
-          .from('groups')
-          .insert({
-            'name': name,
-            'description': description.isEmpty ? null : description,
-            'invite_code': code,
-            'created_by': profileId,
-          })
-          .select()
-          .single();
+      if (response.statusCode == 201) {
+        final groupData = jsonDecode(response.body);
+        final groupId = groupData['id'];
+        final inviteCode = groupData['invite_code'];
 
-      // Add creator as admin
-      await supabase.from('group_members').insert({
-        'group_id': groupRow['id'],
-        'user_id': profileId,
-        'role': 'admin',
-      });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Group "$name" created!\nInvite Code: $inviteCode'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Group "$name" created! Invite code: $code'),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 5),
-          ),
-        );
+        // Calculate initials for avatar
+        final parts = name.trim().split(' ');
+        final initials = parts.length >= 2
+            ? '${parts[0][0]}${parts[1][0]}'.toUpperCase()
+            : name.length >= 2
+                ? name.substring(0, 2).toUpperCase()
+                : name.toUpperCase();
+
         _loadGroups();
+
+        return {
+          'id': groupId,
+          'name': name,
+          'initials': initials,
+          'code': inviteCode,
+        };
+      } else {
+        throw Exception('Failed to create group: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
       if (mounted) {
@@ -437,6 +486,7 @@ class _ChatPageState extends State<ChatPage> {
           ),
         );
       }
+      return null;
     }
   }
 
